@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
+import { localStorageService } from '../../services/localStorage';
 
 const schema = yup.object({
   clientName: yup.string().required('Nome do cliente é obrigatório'),
@@ -103,6 +104,26 @@ Outorgante
   };
 
   const onSubmit = (data: PowerOfAttorneyData) => {
+    try {
+      // Salvar documento no localStorage
+      localStorageService.saveDocument({
+        type: 'Procuração',
+        client: data.clientName,
+        data: {
+          type: data.type,
+          object: data.object,
+          location: data.location,
+          date: data.date,
+          lawyerName: data.lawyerName,
+          lawyerOab: data.lawyerOab
+        }
+      });
+      
+      console.log('Procuração salva no sistema');
+    } catch (error) {
+      console.error('Erro ao salvar procuração:', error);
+    }
+    
     generatePDF(data);
   };
 

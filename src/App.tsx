@@ -10,6 +10,7 @@ import Financial from './components/Financial/Financial';
 import FinancialForm from './components/Financial/FinancialForm';
 import DocumentGenerator from './components/Documents/DocumentGenerator';
 import Reports from './components/Reports/Reports';
+import Settings from './components/Settings/Settings';
 import { Process, CalendarEvent } from './types';
 
 function App() {
@@ -138,6 +139,9 @@ function App() {
       
       case 'reports':
         return <Reports />;
+      
+      case 'settings':
+        return <Settings />;
       
       default:
         return <Dashboard />;

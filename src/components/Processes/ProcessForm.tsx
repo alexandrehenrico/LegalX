@@ -49,14 +49,34 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
   }, [process, setValue]);
 
   const onSubmit = (data: Partial<Process>) => {
-    const processData: Process = {
-      id: process?.id || Date.now().toString(),
-      ...data,
-      attachments,
-      createdAt: process?.createdAt || new Date().toISOString()
-    } as Process;
-    
-    onSave(processData);
+    try {
+      if (process) {
+        // Atualizar processo existente
+        const updatedProcess = localStorageService.updateProcess(process.id, {
+          ...data,
+          attachments
+        } as Partial<Process>);
+        
+        if (updatedProcess) {
+          console.log('Processo atualizado com sucesso');
+          onSave(updatedProcess);
+        } else {
+          alert('Erro ao atualizar processo');
+        }
+      } else {
+        // Criar novo processo
+        const newProcess = localStorageService.saveProcess({
+          ...data,
+          attachments
+        } as Omit<Process, 'id' | 'createdAt'>);
+        
+        console.log('Novo processo criado com sucesso');
+        onSave(newProcess);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar processo:', error);
+      alert('Erro ao salvar processo. Tente novamente.');
+    }
   };
 
   const addAttachment = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   DocumentChartBarIcon,
   CalendarIcon,
@@ -20,24 +20,56 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { mockFinancialSummary, mockProcesses, mockEvents } from '../../data/mockData';
+import { localStorageService } from '../../services/localStorage';
+import { Process, CalendarEvent } from '../../types';
 import jsPDF from 'jspdf';
 
 export default function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [processes, setProcesses] = useState<Process[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [financialSummary, setFinancialSummary] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    balance: 0,
+    monthlyData: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadReportData();
+  }, []);
+
+  const loadReportData = () => {
+    try {
+      const loadedProcesses = localStorageService.getProcesses();
+      const loadedEvents = localStorageService.getEvents();
+      const loadedFinancialSummary = localStorageService.getFinancialSummary();
+      
+      setProcesses(loadedProcesses);
+      setEvents(loadedEvents);
+      setFinancialSummary(loadedFinancialSummary);
+      
+      console.log('Dados do relatório carregados');
+    } catch (error) {
+      console.error('Erro ao carregar dados do relatório:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Financial data
-  const totalRevenue = mockFinancialSummary.totalRevenue;
-  const totalExpenses = mockFinancialSummary.totalExpenses;
+  const totalRevenue = financialSummary.totalRevenue;
+  const totalExpenses = financialSummary.totalExpenses;
   const netProfit = totalRevenue - totalExpenses;
   
   // Process data
-  const activeProcesses = mockProcesses.filter(p => p.status === 'Em andamento').length;
-  const completedProcesses = mockProcesses.filter(p => p.status === 'Concluído').length;
+  const activeProcesses = processes.filter(p => p.status === 'Em andamento').length;
+  const completedProcesses = processes.filter(p => p.status === 'Concluído').length;
   
   // Events data
-  const totalEvents = mockEvents.length;
-  const completedEvents = mockEvents.filter(e => e.status === 'Concluído').length;
+  const totalEvents = events.length;
+  const completedEvents = events.filter(e => e.status === 'Concluído').length;
   
   // Chart data
   const processStatusData = [
@@ -45,7 +77,7 @@ export default function Reports() {
     { name: 'Concluídos', value: completedProcesses, color: '#10b981' }
   ];
   
-  const monthlyFinancialData = mockFinancialSummary.monthlyData.map(item => ({
+  const monthlyFinancialData = financialSummary.monthlyData.map(item => ({
     ...item,
     profit: item.revenue - item.expenses
   }));
@@ -125,6 +157,12 @@ export default function Reports() {
 
   return (
     <div className="p-6">
+      {loading && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Carregando dados do relatório...</p>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

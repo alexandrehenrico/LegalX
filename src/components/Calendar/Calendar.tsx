@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarEvent } from '../../types';
-import { mockEvents } from '../../data/mockData';
+import { localStorageService } from '../../services/localStorage';
 import CalendarForm from './CalendarForm';
 import { 
   ChevronLeftIcon, 
@@ -19,12 +19,17 @@ interface CalendarProps {
 }
 
 export default function Calendar({ quickActionType, onClearQuickAction }: CalendarProps) {
-  const [events, setEvents] = useState<CalendarEvent[]>(mockEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [showForm, setShowForm] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
   useEffect(() => {
     if (quickActionType === 'event') {
@@ -33,6 +38,18 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
       onClearQuickAction();
     }
   }, [quickActionType, onClearQuickAction]);
+
+  const loadEvents = () => {
+    try {
+      const loadedEvents = localStorageService.getEvents();
+      setEvents(loadedEvents);
+      console.log(`${loadedEvents.length} eventos carregados`);
+    } catch (error) {
+      console.error('Erro ao carregar eventos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -60,19 +77,41 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
   };
 
   const handleSaveEvent = (eventData: CalendarEvent) => {
-    if (selectedEvent) {
-      setEvents(events.map(e => e.id === selectedEvent.id ? eventData : e));
-    } else {
-      setEvents([...events, { ...eventData, id: Date.now().toString() }]);
+    try {
+      if (selectedEvent) {
+        // Atualizar evento existente
+        const updatedEvent = localStorageService.updateEvent(selectedEvent.id, eventData);
+        if (updatedEvent) {
+          console.log('Evento atualizado com sucesso');
+          loadEvents(); // Recarregar eventos
+        }
+      } else {
+        // Criar novo evento
+        const newEvent = localStorageService.saveEvent(eventData);
+        console.log('Novo evento criado com sucesso');
+        loadEvents(); // Recarregar eventos
+      }
+      
+      setShowForm(false);
+      setSelectedEvent(null);
+      setSelectedDate(null);
+    } catch (error) {
+      console.error('Erro ao salvar evento:', error);
+      alert('Erro ao salvar evento. Tente novamente.');
     }
-    setShowForm(false);
-    setSelectedEvent(null);
-    setSelectedDate(null);
   };
 
   const handleDeleteEvent = (eventId: string) => {
     if (confirm('Tem certeza que deseja excluir este evento?')) {
-      setEvents(events.filter(e => e.id !== eventId));
+      try {
+        const success = localStorageService.deleteEvent(eventId);
+        if (success) {
+          loadEvents(); // Recarregar eventos
+        }
+      } catch (error) {
+        console.error('Erro ao excluir evento:', error);
+        alert('Erro ao excluir evento. Tente novamente.');
+      }
     }
   };
 

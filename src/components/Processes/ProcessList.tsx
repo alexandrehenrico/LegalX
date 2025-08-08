@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Process } from '../../types';
-import { mockProcesses } from '../../data/mockData';
+import { localStorageService } from '../../services/localStorage';
 import { 
   MagnifyingGlassIcon, 
   FunnelIcon,
@@ -19,9 +19,40 @@ interface ProcessListProps {
 }
 
 export default function ProcessList({ onNewProcess, onViewProcess, onEditProcess }: ProcessListProps) {
-  const [processes] = useState<Process[]>(mockProcesses);
+  const [processes, setProcesses] = useState<Process[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProcesses();
+  }, []);
+
+  const loadProcesses = () => {
+    try {
+      const loadedProcesses = localStorageService.getProcesses();
+      setProcesses(loadedProcesses);
+      console.log(`${loadedProcesses.length} processos carregados`);
+    } catch (error) {
+      console.error('Erro ao carregar processos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProcess = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este processo?')) {
+      try {
+        const success = localStorageService.deleteProcess(id);
+        if (success) {
+          loadProcesses(); // Recarregar lista
+        }
+      } catch (error) {
+        console.error('Erro ao excluir processo:', error);
+        alert('Erro ao excluir processo. Tente novamente.');
+      }
+    }
+  };
 
   const filteredProcesses = processes.filter(process => {
     const matchesSearch = process.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,6 +183,7 @@ export default function ProcessList({ onNewProcess, onViewProcess, onEditProcess
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => handleDeleteProcess(process.id)}
                         className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                         title="Excluir"
                       >
@@ -165,11 +197,20 @@ export default function ProcessList({ onNewProcess, onViewProcess, onEditProcess
           </table>
         </div>
         
-        {filteredProcesses.length === 0 && (
+        {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Nenhum processo encontrado.</p>
+            <p className="text-gray-500">Carregando processos...</p>
           </div>
-        )}
+        ) : filteredProcesses.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">
+              {processes.length === 0 
+                ? 'Nenhum processo cadastrado. Clique em "Novo Processo" para começar.' 
+                : 'Nenhum processo encontrado com os filtros aplicados.'
+              }
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

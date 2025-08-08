@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
+import { localStorageService } from '../../services/localStorage';
 
 const schema = yup.object({
   clientName: yup.string().required('Nome do cliente é obrigatório'),
@@ -147,6 +148,26 @@ CPF: ${data.lawyerCpf}
   };
 
   const onSubmit = (data: ReceiptData) => {
+    try {
+      // Salvar documento no localStorage
+      localStorageService.saveDocument({
+        type: 'Recibo',
+        client: data.clientName,
+        data: {
+          amount: data.amount,
+          description: data.description,
+          paymentMethod: data.paymentMethod,
+          date: data.date,
+          lawyerName: data.lawyerName,
+          lawyerOab: data.lawyerOab
+        }
+      });
+      
+      console.log('Recibo salvo no sistema');
+    } catch (error) {
+      console.error('Erro ao salvar recibo:', error);
+    }
+    
     generatePDF(data);
   };
 

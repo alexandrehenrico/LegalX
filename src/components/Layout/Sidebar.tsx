@@ -6,7 +6,8 @@ import {
   CurrencyDollarIcon,
   FolderIcon,
   ChartBarIcon,
-  PlusIcon 
+  PlusIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Financeiro', href: 'financial', icon: CurrencyDollarIcon },
   { name: 'Documentos', href: 'documents', icon: DocumentTextIcon },
   { name: 'Relatórios', href: 'reports', icon: ChartBarIcon },
+  { name: 'Configurações', href: 'settings', icon: CogIcon },
 ];
 
 const quickActions = [

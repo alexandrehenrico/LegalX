@@ -1,4 +1,5 @@
 import React from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FolderIcon, 
   DocumentTextIcon, 
@@ -9,13 +10,45 @@ import FinancialCard from './FinancialCard';
 import StatsCard from './StatsCard';
 import CashFlowChart from './CashFlowChart';
 import RecentItems from './RecentItems';
-import { mockFinancialSummary, mockProcesses, mockEvents, mockDocuments } from '../../data/mockData';
+import { localStorageService } from '../../services/localStorage';
+import { Process, CalendarEvent, Document } from '../../types';
 
 export default function Dashboard() {
-  const activeProcesses = mockProcesses.filter(p => p.status === 'Em andamento').length;
-  const completedProcesses = mockProcesses.filter(p => p.status === 'Concluído').length;
-  const upcomingEvents = mockEvents.filter(e => e.status === 'Pendente').length;
-  const recentDocuments = mockDocuments.length;
+  const [processes, setProcesses] = useState<Process[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [financialSummary, setFinancialSummary] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    balance: 0,
+    monthlyData: []
+  });
+
+  useEffect(() => {
+    // Carregar dados do localStorage
+    const loadData = () => {
+      try {
+        setProcesses(localStorageService.getProcesses());
+        setEvents(localStorageService.getEvents());
+        setDocuments(localStorageService.getDocuments());
+        setFinancialSummary(localStorageService.getFinancialSummary());
+      } catch (error) {
+        console.error('Erro ao carregar dados do dashboard:', error);
+      }
+    };
+
+    loadData();
+
+    // Atualizar dados a cada 30 segundos para refletir mudanças
+    const interval = setInterval(loadData, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeProcesses = processes.filter(p => p.status === 'Em andamento').length;
+  const completedProcesses = processes.filter(p => p.status === 'Concluído').length;
+  const upcomingEvents = events.filter(e => e.status === 'Pendente').length;
+  const recentDocuments = documents.length;
 
   return (
     <div className="p-6 space-y-6">
@@ -29,19 +62,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <FinancialCard
           title="Receitas do Mês"
-          amount={mockFinancialSummary.totalRevenue}
+          amount={financialSummary.totalRevenue}
           type="revenue"
           change={12.5}
         />
         <FinancialCard
           title="Despesas do Mês"
-          amount={mockFinancialSummary.totalExpenses}
+          amount={financialSummary.totalExpenses}
           type="expense"
           change={-3.2}
         />
         <FinancialCard
           title="Saldo Atual"
-          amount={mockFinancialSummary.balance}
+          amount={financialSummary.balance}
           type="balance"
           change={18.7}
         />
@@ -81,16 +114,16 @@ export default function Dashboard() {
 
       {/* Charts and Recent Items */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CashFlowChart data={mockFinancialSummary.monthlyData} />
+        <CashFlowChart data={financialSummary.monthlyData} />
         <div className="space-y-6">
           <RecentItems
             title="Próximos Compromissos"
-            items={mockEvents.filter(e => e.status === 'Pendente')}
+            items={events.filter(e => e.status === 'Pendente')}
             type="events"
           />
           <RecentItems
             title="Documentos Recentes"
-            items={mockDocuments}
+            items={documents}
             type="documents"
           />
         </div>

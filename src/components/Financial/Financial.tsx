@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Revenue, Expense } from '../../types';
-import { mockRevenues, mockExpenses } from '../../data/mockData';
+import { localStorageService } from '../../services/localStorage';
 import FinancialForm from './FinancialForm';
 import { 
   PlusIcon,
@@ -20,13 +20,18 @@ interface FinancialProps {
 }
 
 export default function Financial({ quickActionType, onClearQuickAction }: FinancialProps) {
-  const [revenues, setRevenues] = useState<Revenue[]>(mockRevenues);
-  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
+  const [revenues, setRevenues] = useState<Revenue[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [activeTab, setActiveTab] = useState<'revenues' | 'expenses'>('revenues');
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'revenue' | 'expense'>('revenue');
   const [selectedItem, setSelectedItem] = useState<Revenue | Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFinancialData();
+  }, []);
 
   useEffect(() => {
     if (quickActionType === 'revenue') {
@@ -43,6 +48,20 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
       onClearQuickAction();
     }
   }, [quickActionType, onClearQuickAction]);
+
+  const loadFinancialData = () => {
+    try {
+      const loadedRevenues = localStorageService.getRevenues();
+      const loadedExpenses = localStorageService.getExpenses();
+      setRevenues(loadedRevenues);
+      setExpenses(loadedExpenses);
+      console.log(`${loadedRevenues.length} receitas e ${loadedExpenses.length} despesas carregadas`);
+    } catch (error) {
+      console.error('Erro ao carregar dados financeiros:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -68,31 +87,60 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
   };
 
   const handleSaveItem = (data: Revenue | Expense, type: 'revenue' | 'expense') => {
-    if (type === 'revenue') {
-      const revenueData = data as Revenue;
-      if (selectedItem) {
-        setRevenues(revenues.map(r => r.id === selectedItem.id ? revenueData : r));
+    try {
+      if (type === 'revenue') {
+        const revenueData = data as Revenue;
+        if (selectedItem) {
+          // Atualizar receita existente
+          const updatedRevenue = localStorageService.updateRevenue(selectedItem.id, revenueData);
+          if (updatedRevenue) {
+            console.log('Receita atualizada com sucesso');
+          }
+        } else {
+          // Criar nova receita
+          const newRevenue = localStorageService.saveRevenue(revenueData);
+          console.log('Nova receita criada com sucesso');
+        }
       } else {
-        setRevenues([...revenues, { ...revenueData, id: Date.now().toString() }]);
+        const expenseData = data as Expense;
+        if (selectedItem) {
+          // Atualizar despesa existente
+          const updatedExpense = localStorageService.updateExpense(selectedItem.id, expenseData);
+          if (updatedExpense) {
+            console.log('Despesa atualizada com sucesso');
+          }
+        } else {
+          // Criar nova despesa
+          const newExpense = localStorageService.saveExpense(expenseData);
+          console.log('Nova despesa criada com sucesso');
+        }
       }
-    } else {
-      const expenseData = data as Expense;
-      if (selectedItem) {
-        setExpenses(expenses.map(e => e.id === selectedItem.id ? expenseData : e));
-      } else {
-        setExpenses([...expenses, { ...expenseData, id: Date.now().toString() }]);
-      }
+      
+      loadFinancialData(); // Recarregar dados
+      setShowForm(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Erro ao salvar item financeiro:', error);
+      alert('Erro ao salvar. Tente novamente.');
     }
-    setShowForm(false);
-    setSelectedItem(null);
   };
 
   const handleDeleteItem = (id: string, type: 'revenue' | 'expense') => {
     if (confirm('Tem certeza que deseja excluir este item?')) {
-      if (type === 'revenue') {
-        setRevenues(revenues.filter(r => r.id !== id));
-      } else {
-        setExpenses(expenses.filter(e => e.id !== id));
+      try {
+        let success = false;
+        if (type === 'revenue') {
+          success = localStorageService.deleteRevenue(id);
+        } else {
+          success = localStorageService.deleteExpense(id);
+        }
+        
+        if (success) {
+          loadFinancialData(); // Recarregar dados
+        }
+      } catch (error) {
+        console.error('Erro ao excluir item:', error);
+        alert('Erro ao excluir item. Tente novamente.');
       }
     }
   };
@@ -315,11 +363,20 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
             </table>
           </div>
           
-          {filteredRevenues.length === 0 && (
+          {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Nenhuma receita encontrada.</p>
+              <p className="text-gray-500">Carregando receitas...</p>
             </div>
-          )}
+          ) : filteredRevenues.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">
+                {revenues.length === 0 
+                  ? 'Nenhuma receita cadastrada. Clique em "Nova Receita" para começar.' 
+                  : 'Nenhuma receita encontrada com os filtros aplicados.'
+                }
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -391,11 +448,20 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
             </table>
           </div>
           
-          {filteredExpenses.length === 0 && (
+          {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Nenhuma despesa encontrada.</p>
+              <p className="text-gray-500">Carregando despesas...</p>
             </div>
-          )}
+          ) : filteredExpenses.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">
+                {expenses.length === 0 
+                  ? 'Nenhuma despesa cadastrada. Clique em "Nova Despesa" para começar.' 
+                  : 'Nenhuma despesa encontrada com os filtros aplicados.'
+                }
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
