@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import PowerOfAttorneyForm from './PowerOfAttorneyForm';
 import ReceiptForm from './ReceiptForm';
+import { localStorageService } from '../../services/localStorage';
+import { Document } from '../../types';
 import { DocumentTextIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface DocumentGeneratorProps {
   quickActionType?: string | null;
@@ -10,6 +14,7 @@ interface DocumentGeneratorProps {
 
 export default function DocumentGenerator({ quickActionType, onClearQuickAction }: DocumentGeneratorProps) {
   const [activeDocument, setActiveDocument] = useState<'power-of-attorney' | 'receipt' | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
 
   useEffect(() => {
     if (quickActionType === 'power-of-attorney') {
@@ -21,10 +26,19 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
     }
   }, [quickActionType, onClearQuickAction]);
 
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = () => {
+    setDocuments(localStorageService.getDocuments());
+  };
+
   if (activeDocument === 'power-of-attorney') {
     return (
       <PowerOfAttorneyForm
         onBack={() => setActiveDocument(null)}
+        onSave={loadDocuments}
       />
     );
   }
@@ -33,6 +47,7 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
     return (
       <ReceiptForm
         onBack={() => setActiveDocument(null)}
+        onSave={loadDocuments}
       />
     );
   }
@@ -98,11 +113,38 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
       <div className="mt-12">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Documentos Recentes</h2>
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6">
-            <p className="text-gray-500 text-center">
-              Os documentos gerados aparecerão aqui
-            </p>
-          </div>
+          {documents.length === 0 ? (
+            <div className="p-6">
+              <p className="text-gray-500 text-center">
+                Nenhum documento gerado ainda
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {documents.slice(0, 10).map((document) => (
+                <div key={document.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900">{document.type}</h3>
+                      <p className="text-sm text-gray-500">Cliente: {document.client}</p>
+                      <p className="text-xs text-gray-400">
+                        Criado em {format(new Date(document.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      </p>
+                    </div>
+                    <div className="flex items-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        document.type === 'Procuração' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {document.type}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

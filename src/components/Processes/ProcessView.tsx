@@ -1,18 +1,37 @@
 import React from 'react';
 import { Process } from '../../types';
-import { ArrowLeftIcon, PencilIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, DocumentIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { localStorageService } from '../../services/localStorage';
 
 interface ProcessViewProps {
   process: Process;
   onBack: () => void;
   onEdit: () => void;
+  onUpdate?: (process: Process) => void;
 }
 
-export default function ProcessView({ process, onBack, onEdit }: ProcessViewProps) {
+export default function ProcessView({ process, onBack, onEdit, onUpdate }: ProcessViewProps) {
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
+  };
+
+  const handleMarkAsCompleted = () => {
+    if (confirm('Tem certeza que deseja marcar este processo como concluído?')) {
+      try {
+        const updatedProcess = localStorageService.updateProcess(process.id, {
+          status: 'Concluído'
+        });
+        
+        if (updatedProcess && onUpdate) {
+          onUpdate(updatedProcess);
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar status do processo:', error);
+        alert('Erro ao atualizar processo. Tente novamente.');
+      }
+    }
   };
 
   return (
@@ -32,13 +51,24 @@ export default function ProcessView({ process, onBack, onEdit }: ProcessViewProp
             <p className="text-gray-600">Visualização detalhada do processo</p>
           </div>
         </div>
-        <button
-          onClick={onEdit}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PencilIcon className="w-5 h-5 mr-2" />
-          Editar
-        </button>
+        <div className="flex items-center space-x-3">
+          {process.status === 'Em andamento' && (
+            <button
+              onClick={handleMarkAsCompleted}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <CheckCircleIcon className="w-5 h-5 mr-2" />
+              Marcar como Concluído
+            </button>
+          )}
+          <button
+            onClick={onEdit}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <PencilIcon className="w-5 h-5 mr-2" />
+            Editar
+          </button>
+        </div>
       </div>
 
       <div className="max-w-4xl space-y-6">

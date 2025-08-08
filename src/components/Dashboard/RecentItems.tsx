@@ -41,7 +41,9 @@ export default function RecentItems({ title, items, type }: RecentItemsProps) {
                 ) : (
                   <>
                     <p className="font-medium text-gray-900">{(item as Document).type}</p>
-                    <p className="text-sm text-gray-500">Cliente: {(item as Document).client}</p>
+                    <p className="text-sm text-gray-500">
+                      Cliente: {(item as Document).client}
+                    </p>
                     <p className="text-xs text-gray-400">
                       Criado em {formatDate((item as Document).createdAt)}
                     </p>

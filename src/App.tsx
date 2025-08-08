@@ -109,6 +109,9 @@ function App() {
                 process={selectedProcess!}
                 onBack={handleBackToList}
                 onEdit={() => setViewMode('form')}
+                onUpdate={(updatedProcess) => {
+                  setSelectedProcess(updatedProcess);
+                }}
               />
             );
           default:

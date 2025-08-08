@@ -36,6 +36,11 @@ export default function Dashboard() {
         setEvents(localStorageService.getEvents());
         setDocuments(localStorageService.getDocuments());
         setFinancialSummary(localStorageService.getFinancialSummary());
+        console.log('Dados do dashboard carregados:', {
+          processes: localStorageService.getProcesses().length,
+          events: localStorageService.getEvents().length,
+          documents: localStorageService.getDocuments().length
+        });
       } catch (error) {
         console.error('Erro ao carregar dados do dashboard:', error);
       }
@@ -124,12 +129,12 @@ export default function Dashboard() {
         <div className="space-y-6">
           <RecentItems
             title="Próximos Compromissos"
-            items={events.filter(e => e.status === 'Pendente')}
+            items={events.filter(e => e.status === 'Pendente').slice(0, 5)}
             type="events"
           />
           <RecentItems
             title="Documentos Recentes"
-            items={documents}
+            items={documents.slice(0, 5)}
             type="documents"
           />
         </div>

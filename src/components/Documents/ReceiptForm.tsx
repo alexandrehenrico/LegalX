@@ -19,6 +19,7 @@ const schema = yup.object({
 
 interface ReceiptFormProps {
   onBack: () => void;
+  onSave?: () => void;
 }
 
 interface ReceiptData {
@@ -32,7 +33,7 @@ interface ReceiptData {
   date: string;
 }
 
-export default function ReceiptForm({ onBack }: ReceiptFormProps) {
+export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
   const {
     register,
     handleSubmit,
@@ -150,7 +151,7 @@ CPF: ${data.lawyerCpf}
   const onSubmit = (data: ReceiptData) => {
     try {
       // Salvar documento no localStorage
-      localStorageService.saveDocument({
+      const savedDocument = localStorageService.saveDocument({
         type: 'Recibo',
         client: data.clientName,
         data: {
@@ -163,9 +164,15 @@ CPF: ${data.lawyerCpf}
         }
       });
       
-      console.log('Recibo salvo no sistema');
+      console.log('Recibo salvo no sistema:', savedDocument);
+      
+      // Chamar callback para atualizar lista
+      if (onSave) {
+        onSave();
+      }
     } catch (error) {
       console.error('Erro ao salvar recibo:', error);
+      alert('Erro ao salvar recibo no sistema. Tente novamente.');
     }
     
     generatePDF(data);

@@ -21,6 +21,7 @@ const schema = yup.object({
 
 interface PowerOfAttorneyFormProps {
   onBack: () => void;
+  onSave?: () => void;
 }
 
 interface PowerOfAttorneyData {
@@ -36,7 +37,7 @@ interface PowerOfAttorneyData {
   date: string;
 }
 
-export default function PowerOfAttorneyForm({ onBack }: PowerOfAttorneyFormProps) {
+export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyFormProps) {
   const {
     register,
     handleSubmit,
@@ -106,7 +107,7 @@ Outorgante
   const onSubmit = (data: PowerOfAttorneyData) => {
     try {
       // Salvar documento no localStorage
-      localStorageService.saveDocument({
+      const savedDocument = localStorageService.saveDocument({
         type: 'Procuração',
         client: data.clientName,
         data: {
@@ -119,9 +120,15 @@ Outorgante
         }
       });
       
-      console.log('Procuração salva no sistema');
+      console.log('Procuração salva no sistema:', savedDocument);
+      
+      // Chamar callback para atualizar lista
+      if (onSave) {
+        onSave();
+      }
     } catch (error) {
       console.error('Erro ao salvar procuração:', error);
+      alert('Erro ao salvar procuração no sistema. Tente novamente.');
     }
     
     generatePDF(data);

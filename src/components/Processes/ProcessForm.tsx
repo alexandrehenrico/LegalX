@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Process } from '../../types';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { localStorageService } from '../../services/localStorage';
 
 const schema = yup.object({
   name: yup.string().required('Nome do processo é obrigatório'),
