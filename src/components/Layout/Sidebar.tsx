@@ -6,6 +6,7 @@ import {
   CurrencyDollarIcon,
   FolderIcon,
   ChartBarIcon,
+  UserGroupIcon,
   PlusIcon,
   CogIcon
 } from '@heroicons/react/24/outline';
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Processos', href: 'processes', icon: FolderIcon },
   { name: 'Agenda', href: 'calendar', icon: CalendarIcon },
   { name: 'Financeiro', href: 'financial', icon: CurrencyDollarIcon },
+  { name: 'Advogados', href: 'lawyers', icon: UserGroupIcon },
   { name: 'Documentos', href: 'documents', icon: DocumentTextIcon },
   { name: 'Relatórios', href: 'reports', icon: ChartBarIcon },
   { name: 'Configurações', href: 'settings', icon: CogIcon },
@@ -34,6 +36,7 @@ const quickActions = [
   { name: 'Nova Despesa', action: 'new-expense' },
   { name: 'Novo Processo', action: 'new-process' },
   { name: 'Novo Evento', action: 'new-event' },
+  { name: 'Novo Advogado', action: 'new-lawyer' },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, onQuickAction }: SidebarProps) {

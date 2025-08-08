@@ -7,6 +7,7 @@
  */
 
 import { Process, CalendarEvent, Revenue, Expense, Document } from '../types';
+import { Lawyer } from '../types';
 
 // Chaves para o localStorage
 const STORAGE_KEYS = {
@@ -15,6 +16,7 @@ const STORAGE_KEYS = {
   REVENUES: 'legalx_revenues',
   EXPENSES: 'legalx_expenses',
   DOCUMENTS: 'legalx_documents',
+  LAWYERS: 'legalx_lawyers',
   SETTINGS: 'legalx_settings'
 } as const;
 
@@ -342,6 +344,64 @@ class LocalStorageService {
   }
 
   /**
+   * ADVOGADOS - Métodos CRUD
+   */
+  
+  getLawyers(): Lawyer[] {
+    return this.getItem<Lawyer>(STORAGE_KEYS.LAWYERS);
+  }
+
+  getLawyerById(id: string): Lawyer | null {
+    const lawyers = this.getLawyers();
+    return lawyers.find(lawyer => lawyer.id === id) || null;
+  }
+
+  saveLawyer(lawyer: Omit<Lawyer, 'id' | 'createdAt'>): Lawyer {
+    const lawyers = this.getLawyers();
+    const newLawyer: Lawyer = {
+      ...lawyer,
+      id: this.generateId(),
+      createdAt: new Date().toISOString()
+    };
+    
+    lawyers.push(newLawyer);
+    this.setItem(STORAGE_KEYS.LAWYERS, lawyers);
+    
+    console.log('Advogado salvo:', newLawyer.fullName);
+    return newLawyer;
+  }
+
+  updateLawyer(id: string, updatedLawyer: Partial<Lawyer>): Lawyer | null {
+    const lawyers = this.getLawyers();
+    const index = lawyers.findIndex(lawyer => lawyer.id === id);
+    
+    if (index === -1) {
+      console.error('Advogado não encontrado para atualização:', id);
+      return null;
+    }
+
+    lawyers[index] = { ...lawyers[index], ...updatedLawyer };
+    this.setItem(STORAGE_KEYS.LAWYERS, lawyers);
+    
+    console.log('Advogado atualizado:', lawyers[index].fullName);
+    return lawyers[index];
+  }
+
+  deleteLawyer(id: string): boolean {
+    const lawyers = this.getLawyers();
+    const filteredLawyers = lawyers.filter(lawyer => lawyer.id !== id);
+    
+    if (filteredLawyers.length === lawyers.length) {
+      console.error('Advogado não encontrado para exclusão:', id);
+      return false;
+    }
+
+    this.setItem(STORAGE_KEYS.LAWYERS, filteredLawyers);
+    console.log('Advogado excluído:', id);
+    return true;
+  }
+
+  /**
    * MÉTODOS DE LIMPEZA E MANUTENÇÃO
    */
   
@@ -382,6 +442,11 @@ class LocalStorageService {
   clearDocuments(): void {
     localStorage.removeItem(STORAGE_KEYS.DOCUMENTS);
     console.log('Documentos limpos');
+  }
+
+  clearLawyers(): void {
+    localStorage.removeItem(STORAGE_KEYS.LAWYERS);
+    console.log('Advogados limpos');
   }
 
   /**
@@ -439,6 +504,7 @@ class LocalStorageService {
     const processes = this.getProcesses();
     const events = this.getEvents();
     const documents = this.getDocuments();
+    const lawyers = this.getLawyers();
 
     return {
       totalProcesses: processes.length,
@@ -447,7 +513,9 @@ class LocalStorageService {
       totalEvents: events.length,
       pendingEvents: events.filter(e => e.status === 'Pendente').length,
       completedEvents: events.filter(e => e.status === 'Concluído').length,
-      totalDocuments: documents.length
+      totalDocuments: documents.length,
+      totalLawyers: lawyers.length,
+      activeLawyers: lawyers.filter(l => l.status === 'Ativo').length
     };
   }
 
@@ -463,6 +531,7 @@ class LocalStorageService {
       revenues: this.getRevenues(),
       expenses: this.getExpenses(),
       documents: this.getDocuments(),
+      lawyers: this.getLawyers(),
       exportDate: new Date().toISOString()
     };
 
@@ -479,6 +548,7 @@ class LocalStorageService {
       if (data.revenues) this.setItem(STORAGE_KEYS.REVENUES, data.revenues);
       if (data.expenses) this.setItem(STORAGE_KEYS.EXPENSES, data.expenses);
       if (data.documents) this.setItem(STORAGE_KEYS.DOCUMENTS, data.documents);
+      if (data.lawyers) this.setItem(STORAGE_KEYS.LAWYERS, data.lawyers);
 
       console.log('Dados importados com sucesso');
       return true;

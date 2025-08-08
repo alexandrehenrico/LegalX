@@ -55,6 +55,21 @@ export interface Document {
   data: any;
 }
 
+export interface Lawyer {
+  id: string;
+  fullName: string;
+  cpf: string;
+  oab: string;
+  photo?: string;
+  commission: number; // Percentual de comissão (0-100)
+  email?: string;
+  phone?: string;
+  address?: string;
+  specialties?: string[];
+  status: 'Ativo' | 'Inativo';
+  createdAt: string;
+}
+
 export interface FinancialSummary {
   totalRevenue: number;
   totalExpenses: number;

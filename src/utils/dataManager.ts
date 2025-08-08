@@ -181,6 +181,19 @@ export class DataManager {
   static createSampleData(): void {
     if (confirm('Deseja criar dados de exemplo? Isso irá adicionar alguns registros para demonstração.')) {
       try {
+        // Advogado de exemplo
+        localStorageService.saveLawyer({
+          fullName: 'Dr. Maria Santos Silva',
+          cpf: '12345678901',
+          oab: '123456/SP',
+          commission: 15,
+          email: 'maria.santos@exemplo.com',
+          phone: '(11) 99999-9999',
+          address: 'Rua das Flores, 123 - São Paulo/SP',
+          specialties: ['Direito Trabalhista', 'Direito Civil', 'Direito Previdenciário'],
+          status: 'Ativo'
+        });
+
         // Processo de exemplo
         localStorageService.saveProcess({
           name: 'Ação Trabalhista - Exemplo',
