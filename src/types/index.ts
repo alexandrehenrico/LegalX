@@ -65,3 +65,6 @@ export interface FinancialSummary {
     expenses: number;
   }>;
 }
+
+// Re-export auth types for convenience
+export type { User, AuthState } from './auth';

@@ -12,6 +12,7 @@ import CashFlowChart from './CashFlowChart';
 import RecentItems from './RecentItems';
 import { localStorageService } from '../../services/localStorage';
 import { Process, CalendarEvent, Document } from '../../types';
+import { authService } from '../../services/authService';
 
 export default function Dashboard() {
   const [processes, setProcesses] = useState<Process[]>([]);
@@ -23,6 +24,9 @@ export default function Dashboard() {
     balance: 0,
     monthlyData: []
   });
+
+  // Obter usuário atual para exibir informações personalizadas
+  const currentUser = authService.getCurrentUser();
 
   useEffect(() => {
     // Carregar dados do localStorage
@@ -54,8 +58,10 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Visão geral do escritório de advocacia</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Bem-vindo{currentUser ? `, ${currentUser.officeName}` : ''}!
+        </h1>
+        <p className="text-gray-600">Visão geral do seu escritório de advocacia</p>
       </div>
 
       {/* Financial Cards */}
