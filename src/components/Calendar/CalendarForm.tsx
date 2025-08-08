@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { CalendarEvent } from '../../types';
+import { CalendarEvent, Lawyer } from '../../types';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { localStorageService } from '../../services/localStorage';
 import { format } from 'date-fns';
 
 const schema = yup.object({
@@ -25,6 +26,8 @@ interface CalendarFormProps {
 }
 
 export default function CalendarForm({ event, selectedDate, onBack, onSave }: CalendarFormProps) {
+  const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  
   const {
     register,
     handleSubmit,
@@ -39,6 +42,10 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
   });
 
   useEffect(() => {
+    // Carregar advogados ativos
+    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
+    setLawyers(loadedLawyers);
+    
     if (event) {
       Object.keys(event).forEach((key) => {
         setValue(key as keyof CalendarEvent, event[key as keyof CalendarEvent]);
@@ -172,14 +179,24 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Advogado Responsável *
               </label>
-              <input
+              <select
                 {...register('lawyer')}
-                type="text"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Nome do advogado"
-              />
+              >
+                <option value="">Selecione um advogado</option>
+                {lawyers.map((lawyer) => (
+                  <option key={lawyer.id} value={lawyer.fullName}>
+                    {lawyer.fullName} - OAB: {lawyer.oab}
+                  </option>
+                ))}
+              </select>
               {errors.lawyer && (
                 <p className="text-red-500 text-sm mt-1">{errors.lawyer.message}</p>
+              )}
+              {lawyers.length === 0 && (
+                <p className="text-amber-600 text-sm mt-1">
+                  Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
+                </p>
               )}
             </div>
 

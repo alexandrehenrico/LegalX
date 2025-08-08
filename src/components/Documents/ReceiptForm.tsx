@@ -2,6 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { Lawyer } from '../../types';
 import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
 import { localStorageService } from '../../services/localStorage';
@@ -34,6 +35,8 @@ interface ReceiptData {
 }
 
 export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
+  const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  
   const {
     register,
     handleSubmit,
@@ -45,6 +48,12 @@ export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
       date: new Date().toISOString().split('T')[0]
     }
   });
+
+  React.useEffect(() => {
+    // Carregar advogados ativos
+    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
+    setLawyers(loadedLawyers);
+  }, []);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -283,14 +292,31 @@ CPF: ${data.lawyerCpf}
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nome do Advogado *
                 </label>
-                <input
+                <select
                   {...register('lawyerName')}
-                  type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Dr(a). Nome do Advogado"
-                />
+                  onChange={(e) => {
+                    const selectedLawyer = lawyers.find(l => l.fullName === e.target.value);
+                    if (selectedLawyer) {
+                      setValue('lawyerOab', selectedLawyer.oab);
+                      setValue('lawyerCpf', selectedLawyer.cpf);
+                    }
+                  }}
+                >
+                  <option value="">Selecione um advogado</option>
+                  {lawyers.map((lawyer) => (
+                    <option key={lawyer.id} value={lawyer.fullName}>
+                      {lawyer.fullName} - OAB: {lawyer.oab}
+                    </option>
+                  ))}
+                </select>
                 {errors.lawyerName && (
                   <p className="text-red-500 text-sm mt-1">{errors.lawyerName.message}</p>
+                )}
+                {lawyers.length === 0 && (
+                  <p className="text-amber-600 text-sm mt-1">
+                    Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
+                  </p>
                 )}
               </div>
 
@@ -301,12 +327,16 @@ CPF: ${data.lawyerCpf}
                 <input
                   {...register('lawyerOab')}
                   type="text"
+                  readOnly
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="00000/UF"
                 />
                 {errors.lawyerOab && (
                   <p className="text-red-500 text-sm mt-1">{errors.lawyerOab.message}</p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Preenchido automaticamente ao selecionar o advogado
+                </p>
               </div>
 
               <div>
@@ -316,12 +346,16 @@ CPF: ${data.lawyerCpf}
                 <input
                   {...register('lawyerCpf')}
                   type="text"
+                  readOnly
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="000.000.000-00"
                 />
                 {errors.lawyerCpf && (
                   <p className="text-red-500 text-sm mt-1">{errors.lawyerCpf.message}</p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Preenchido automaticamente ao selecionar o advogado
+                </p>
               </div>
 
               <div>

@@ -33,6 +33,7 @@ export interface Revenue {
   amount: number;
   source: string;
   category: 'Honorário' | 'Consultoria' | 'Outro';
+  responsibleLawyer?: string;
   client?: string;
   description?: string;
 }
@@ -43,6 +44,7 @@ export interface Expense {
   amount: number;
   type: string;
   category: 'Aluguel' | 'Internet' | 'Material' | 'Outro';
+  responsibleLawyer?: string;
   description?: string;
   receipt?: string;
 }

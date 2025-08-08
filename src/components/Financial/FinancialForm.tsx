@@ -2,14 +2,16 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Revenue, Expense } from '../../types';
+import { Revenue, Expense, Lawyer } from '../../types';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { localStorageService } from '../../services/localStorage';
 
 const revenueSchema = yup.object({
   date: yup.string().required('Data é obrigatória'),
   amount: yup.number().positive('Valor deve ser positivo').required('Valor é obrigatório'),
   source: yup.string().required('Fonte é obrigatória'),
   category: yup.string().required('Categoria é obrigatória'),
+  responsibleLawyer: yup.string(),
   client: yup.string(),
   description: yup.string()
 });
@@ -19,6 +21,7 @@ const expenseSchema = yup.object({
   amount: yup.number().positive('Valor deve ser positivo').required('Valor é obrigatório'),
   type: yup.string().required('Tipo é obrigatório'),
   category: yup.string().required('Categoria é obrigatória'),
+  responsibleLawyer: yup.string(),
   description: yup.string(),
   receipt: yup.string()
 });
@@ -31,6 +34,7 @@ interface FinancialFormProps {
 }
 
 export default function FinancialForm({ type, item, onBack, onSave }: FinancialFormProps) {
+  const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
   const schema = type === 'revenue' ? revenueSchema : expenseSchema;
   
   const {
@@ -44,6 +48,10 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
   });
 
   useEffect(() => {
+    // Carregar advogados ativos
+    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
+    setLawyers(loadedLawyers);
+    
     if (item) {
       Object.keys(item).forEach((key) => {
         setValue(key as any, (item as any)[key]);
@@ -162,6 +170,23 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                     placeholder="Nome do cliente (opcional)"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Advogado Responsável
+                  </label>
+                  <select
+                    {...register('responsibleLawyer')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione um advogado (opcional)</option>
+                    {lawyers.map((lawyer) => (
+                      <option key={lawyer.id} value={lawyer.fullName}>
+                        {lawyer.fullName} - OAB: {lawyer.oab}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </>
             ) : (
               <>
@@ -208,6 +233,23 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nome do arquivo ou referência"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Advogado Responsável
+                  </label>
+                  <select
+                    {...register('responsibleLawyer')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione um advogado (opcional)</option>
+                    {lawyers.map((lawyer) => (
+                      <option key={lawyer.id} value={lawyer.fullName}>
+                        {lawyer.fullName} - OAB: {lawyer.oab}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </>
             )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Process } from '../../types';
+import { Process, Lawyer } from '../../types';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { localStorageService } from '../../services/localStorage';
 
@@ -27,6 +27,7 @@ interface ProcessFormProps {
 
 export default function ProcessForm({ process, onBack, onSave }: ProcessFormProps) {
   const [attachments, setAttachments] = useState<string[]>(process?.attachments || []);
+  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
   
   const {
     register,
@@ -41,6 +42,10 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
   });
 
   useEffect(() => {
+    // Carregar advogados
+    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
+    setLawyers(loadedLawyers);
+    
     if (process) {
       Object.keys(process).forEach((key) => {
         setValue(key as keyof Process, process[key as keyof Process]);
@@ -195,14 +200,24 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Advogado Responsável *
                 </label>
-                <input
+                <select
                   {...register('responsibleLawyer')}
-                  type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome do advogado"
-                />
+                >
+                  <option value="">Selecione um advogado</option>
+                  {lawyers.map((lawyer) => (
+                    <option key={lawyer.id} value={lawyer.fullName}>
+                      {lawyer.fullName} - OAB: {lawyer.oab}
+                    </option>
+                  ))}
+                </select>
                 {errors.responsibleLawyer && (
                   <p className="text-red-500 text-sm mt-1">{errors.responsibleLawyer.message}</p>
+                )}
+                {lawyers.length === 0 && (
+                  <p className="text-amber-600 text-sm mt-1">
+                    Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
+                  </p>
                 )}
               </div>
 
