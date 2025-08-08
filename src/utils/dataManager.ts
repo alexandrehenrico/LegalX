@@ -194,6 +194,19 @@ export class DataManager {
           status: 'Ativo'
         });
 
+        // Segundo advogado de exemplo
+        localStorageService.saveLawyer({
+          fullName: 'Dr. João Carlos Oliveira',
+          cpf: '98765432100',
+          oab: '654321/SP',
+          commission: 20,
+          email: 'joao.oliveira@exemplo.com',
+          phone: '(11) 88888-8888',
+          address: 'Av. Paulista, 456 - São Paulo/SP',
+          specialties: ['Direito Empresarial', 'Direito Tributário'],
+          status: 'Ativo'
+        });
+
         // Processo de exemplo
         localStorageService.saveProcess({
           name: 'Ação Trabalhista - Exemplo',
@@ -201,7 +214,7 @@ export class DataManager {
           client: 'João da Silva',
           opposingParty: 'Empresa ABC Ltda.',
           court: 'TRT 2ª Região - 15ª Vara do Trabalho',
-          responsibleLawyer: 'Dr. Maria Santos',
+          responsibleLawyer: 'Dr. Maria Santos Silva',
           startDate: '2024-01-15',
           status: 'Em andamento',
           description: 'Ação de cobrança de verbas rescisórias e danos morais por demissão sem justa causa.',
@@ -218,7 +231,7 @@ export class DataManager {
           location: 'TRT 2ª Região - Sala 205',
           notes: 'Audiência de conciliação',
           status: 'Pendente',
-          lawyer: 'Dr. Maria Santos'
+          lawyer: 'Dr. Maria Santos Silva'
         });
 
         // Receita de exemplo
@@ -227,6 +240,7 @@ export class DataManager {
           amount: 2500,
           source: 'João da Silva',
           category: 'Honorário',
+          responsibleLawyer: 'Dr. Maria Santos Silva',
           client: 'João da Silva',
           description: 'Honorários contratuais - Ação Trabalhista'
         });
@@ -237,6 +251,7 @@ export class DataManager {
           amount: 1200,
           type: 'Aluguel do escritório',
           category: 'Aluguel',
+          responsibleLawyer: 'Dr. João Carlos Oliveira',
           description: 'Aluguel mensal do escritório - Janeiro 2024'
         });
 
