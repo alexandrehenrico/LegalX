@@ -207,6 +207,30 @@ export class DataManager {
           status: 'Ativo'
         });
 
+        // Colaborador de exemplo
+        localStorageService.saveEmployee({
+          fullName: 'Ana Paula Santos',
+          cpf: '11122233344',
+          salary: 3500,
+          position: 'Secretária Jurídica',
+          email: 'ana.santos@exemplo.com',
+          phone: '(11) 77777-7777',
+          address: 'Rua das Acácias, 789 - São Paulo/SP',
+          status: 'Ativo'
+        });
+
+        // Segundo colaborador de exemplo
+        localStorageService.saveEmployee({
+          fullName: 'Carlos Eduardo Lima',
+          cpf: '55566677788',
+          salary: 4200,
+          position: 'Assistente Jurídico',
+          email: 'carlos.lima@exemplo.com',
+          phone: '(11) 66666-6666',
+          address: 'Av. Brasil, 321 - São Paulo/SP',
+          status: 'Ativo'
+        });
+
         // Processo de exemplo
         localStorageService.saveProcess({
           name: 'Ação Trabalhista - Exemplo',

@@ -72,6 +72,20 @@ export interface Lawyer {
   createdAt: string;
 }
 
+export interface Employee {
+  id: string;
+  fullName: string;
+  cpf: string;
+  photo?: string;
+  salary: number;
+  position: string; // Função/cargo
+  email?: string;
+  phone?: string;
+  address?: string;
+  status: 'Ativo' | 'Inativo';
+  createdAt: string;
+}
+
 export interface FinancialSummary {
   totalRevenue: number;
   totalExpenses: number;

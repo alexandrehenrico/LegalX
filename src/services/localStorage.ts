@@ -7,7 +7,7 @@
  */
 
 import { Process, CalendarEvent, Revenue, Expense, Document } from '../types';
-import { Lawyer } from '../types';
+import { Lawyer, Employee } from '../types';
 
 // Chaves para o localStorage
 const STORAGE_KEYS = {
@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   EXPENSES: 'legalx_expenses',
   DOCUMENTS: 'legalx_documents',
   LAWYERS: 'legalx_lawyers',
+  EMPLOYEES: 'legalx_employees',
   SETTINGS: 'legalx_settings'
 } as const;
 
@@ -450,6 +451,69 @@ class LocalStorageService {
   }
 
   /**
+   * COLABORADORES - Métodos CRUD
+   */
+  
+  getEmployees(): Employee[] {
+    return this.getItem<Employee>(STORAGE_KEYS.EMPLOYEES);
+  }
+
+  getEmployeeById(id: string): Employee | null {
+    const employees = this.getEmployees();
+    return employees.find(employee => employee.id === id) || null;
+  }
+
+  saveEmployee(employee: Omit<Employee, 'id' | 'createdAt'>): Employee {
+    const employees = this.getEmployees();
+    const newEmployee: Employee = {
+      ...employee,
+      id: this.generateId(),
+      createdAt: new Date().toISOString()
+    };
+    
+    employees.push(newEmployee);
+    this.setItem(STORAGE_KEYS.EMPLOYEES, employees);
+    
+    console.log('Colaborador salvo:', newEmployee.fullName);
+    return newEmployee;
+  }
+
+  updateEmployee(id: string, updatedEmployee: Partial<Employee>): Employee | null {
+    const employees = this.getEmployees();
+    const index = employees.findIndex(employee => employee.id === id);
+    
+    if (index === -1) {
+      console.error('Colaborador não encontrado para atualização:', id);
+      return null;
+    }
+
+    employees[index] = { ...employees[index], ...updatedEmployee };
+    this.setItem(STORAGE_KEYS.EMPLOYEES, employees);
+    
+    console.log('Colaborador atualizado:', employees[index].fullName);
+    return employees[index];
+  }
+
+  deleteEmployee(id: string): boolean {
+    const employees = this.getEmployees();
+    const filteredEmployees = employees.filter(employee => employee.id !== id);
+    
+    if (filteredEmployees.length === employees.length) {
+      console.error('Colaborador não encontrado para exclusão:', id);
+      return false;
+    }
+
+    this.setItem(STORAGE_KEYS.EMPLOYEES, filteredEmployees);
+    console.log('Colaborador excluído:', id);
+    return true;
+  }
+
+  clearEmployees(): void {
+    localStorage.removeItem(STORAGE_KEYS.EMPLOYEES);
+    console.log('Colaboradores limpos');
+  }
+
+  /**
    * MÉTODOS DE ESTATÍSTICAS E RELATÓRIOS
    */
   
@@ -505,6 +569,7 @@ class LocalStorageService {
     const events = this.getEvents();
     const documents = this.getDocuments();
     const lawyers = this.getLawyers();
+    const employees = this.getEmployees();
 
     return {
       totalProcesses: processes.length,
@@ -515,7 +580,9 @@ class LocalStorageService {
       completedEvents: events.filter(e => e.status === 'Concluído').length,
       totalDocuments: documents.length,
       totalLawyers: lawyers.length,
-      activeLawyers: lawyers.filter(l => l.status === 'Ativo').length
+      activeLawyers: lawyers.filter(l => l.status === 'Ativo').length,
+      totalEmployees: employees.length,
+      activeEmployees: employees.filter(e => e.status === 'Ativo').length
     };
   }
 
@@ -532,6 +599,7 @@ class LocalStorageService {
       expenses: this.getExpenses(),
       documents: this.getDocuments(),
       lawyers: this.getLawyers(),
+      employees: this.getEmployees(),
       exportDate: new Date().toISOString()
     };
 
@@ -549,6 +617,7 @@ class LocalStorageService {
       if (data.expenses) this.setItem(STORAGE_KEYS.EXPENSES, data.expenses);
       if (data.documents) this.setItem(STORAGE_KEYS.DOCUMENTS, data.documents);
       if (data.lawyers) this.setItem(STORAGE_KEYS.LAWYERS, data.lawyers);
+      if (data.employees) this.setItem(STORAGE_KEYS.EMPLOYEES, data.employees);
 
       console.log('Dados importados com sucesso');
       return true;

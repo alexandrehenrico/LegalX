@@ -23,7 +23,7 @@ const navigation = [
   { name: 'Processos', href: 'processes', icon: FolderIcon },
   { name: 'Agenda', href: 'calendar', icon: CalendarIcon },
   { name: 'Financeiro', href: 'financial', icon: CurrencyDollarIcon },
-  { name: 'Advogados', href: 'lawyers', icon: UserGroupIcon },
+  { name: 'Equipe', href: 'team', icon: UserGroupIcon },
   { name: 'Documentos', href: 'documents', icon: DocumentTextIcon },
   { name: 'Relatórios', href: 'reports', icon: ChartBarIcon },
   { name: 'Configurações', href: 'settings', icon: CogIcon },
@@ -37,6 +37,7 @@ const quickActions = [
   { name: 'Novo Processo', action: 'new-process' },
   { name: 'Novo Evento', action: 'new-event' },
   { name: 'Novo Advogado', action: 'new-lawyer' },
+  { name: 'Novo Colaborador', action: 'new-employee' },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, onQuickAction }: SidebarProps) {

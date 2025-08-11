@@ -13,11 +13,13 @@ import FinancialForm from './components/Financial/FinancialForm';
 import DocumentGenerator from './components/Documents/DocumentGenerator';
 import Reports from './components/Reports/Reports';
 import Settings from './components/Settings/Settings';
-import LawyerList from './components/Lawyers/LawyerList';
-import LawyerForm from './components/Lawyers/LawyerForm';
-import LawyerView from './components/Lawyers/LawyerView';
+import TeamList from './components/Team/TeamList';
+import LawyerForm from './components/Team/LawyerForm';
+import LawyerView from './components/Team/LawyerView';
+import EmployeeForm from './components/Team/EmployeeForm';
+import EmployeeView from './components/Team/EmployeeView';
 import { Process, CalendarEvent } from './types';
-import { Lawyer } from './types';
+import { Lawyer, Employee } from './types';
 import { User } from './types/auth';
 
 function App() {
@@ -25,6 +27,8 @@ function App() {
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedLawyer, setSelectedLawyer] = useState<Lawyer | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [teamMemberType, setTeamMemberType] = useState<'lawyer' | 'employee'>('lawyer');
   const [viewMode, setViewMode] = useState<'list' | 'form' | 'view'>('list');
   const [quickActionType, setQuickActionType] = useState<string | null>(null);
 
@@ -39,6 +43,7 @@ function App() {
     setSelectedProcess(null);
     setSelectedEvent(null);
     setSelectedLawyer(null);
+    setSelectedEmployee(null);
     setQuickActionType(null);
   };
 
@@ -70,9 +75,16 @@ function App() {
         setQuickActionType('event');
         break;
       case 'new-lawyer':
-        setActiveSection('lawyers');
+        setActiveSection('team');
         setViewMode('form');
         setSelectedLawyer(null);
+        setTeamMemberType('lawyer');
+        break;
+      case 'new-employee':
+        setActiveSection('team');
+        setViewMode('form');
+        setSelectedEmployee(null);
+        setTeamMemberType('employee');
         break;
     }
   };
@@ -97,6 +109,7 @@ function App() {
     setSelectedProcess(null);
     setSelectedEvent(null);
     setSelectedLawyer(null);
+    setSelectedEmployee(null);
     setQuickActionType(null);
   };
 
@@ -166,40 +179,86 @@ function App() {
       case 'settings':
         return <Settings />;
       
-      case 'lawyers':
+      case 'team':
         switch (viewMode) {
           case 'form':
-            return (
-              <LawyerForm
-                lawyer={selectedLawyer}
-                onBack={handleBackToList}
-                onSave={handleBackToList}
-              />
-            );
+            if (teamMemberType === 'lawyer') {
+              return (
+                <LawyerForm
+                  lawyer={selectedLawyer}
+                  onBack={handleBackToList}
+                  onSave={handleBackToList}
+                />
+              );
+            } else {
+              return (
+                <EmployeeForm
+                  employee={selectedEmployee}
+                  onBack={handleBackToList}
+                  onSave={handleBackToList}
+                />
+              );
+            }
           case 'view':
-            return (
-              <LawyerView
-                lawyer={selectedLawyer!}
-                onBack={handleBackToList}
-                onEdit={() => setViewMode('form')}
-                onUpdate={(updatedLawyer) => {
-                  setSelectedLawyer(updatedLawyer);
-                }}
-              />
-            );
+            if (selectedLawyer) {
+              return (
+                <LawyerView
+                  lawyer={selectedLawyer}
+                  onBack={handleBackToList}
+                  onEdit={() => {
+                    setTeamMemberType('lawyer');
+                    setViewMode('form');
+                  }}
+                  onUpdate={(updatedLawyer) => {
+                    setSelectedLawyer(updatedLawyer);
+                  }}
+                />
+              );
+            } else if (selectedEmployee) {
+              return (
+                <EmployeeView
+                  employee={selectedEmployee}
+                  onBack={handleBackToList}
+                  onEdit={() => {
+                    setTeamMemberType('employee');
+                    setViewMode('form');
+                  }}
+                  onUpdate={(updatedEmployee) => {
+                    setSelectedEmployee(updatedEmployee);
+                  }}
+                />
+              );
+            }
+            return <TeamList onNewLawyer={() => {}} onNewEmployee={() => {}} onViewLawyer={() => {}} onViewEmployee={() => {}} onEditLawyer={() => {}} onEditEmployee={() => {}} />;
           default:
             return (
-              <LawyerList
+              <TeamList
                 onNewLawyer={() => {
                   setViewMode('form');
                   setSelectedLawyer(null);
+                  setTeamMemberType('lawyer');
+                }}
+                onNewEmployee={() => {
+                  setViewMode('form');
+                  setSelectedEmployee(null);
+                  setTeamMemberType('employee');
                 }}
                 onViewLawyer={(lawyer) => {
                   setSelectedLawyer(lawyer);
                   setViewMode('view');
                 }}
+                onViewEmployee={(employee) => {
+                  setSelectedEmployee(employee);
+                  setViewMode('view');
+                }}
                 onEditLawyer={(lawyer) => {
                   setSelectedLawyer(lawyer);
+                  setTeamMemberType('lawyer');
+                  setViewMode('form');
+                }}
+                onEditEmployee={(employee) => {
+                  setSelectedEmployee(employee);
+                  setTeamMemberType('employee');
                   setViewMode('form');
                 }}
               />
