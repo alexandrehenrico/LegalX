@@ -92,65 +92,137 @@ export default function Reports() {
   const generatePDFReport = () => {
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(20);
-    doc.setFont(undefined, 'bold');
-    doc.text('RELATÓRIO FINANCEIRO E OPERACIONAL', 105, 30, { align: 'center' });
+    // Cores da identidade visual
+    const primaryBlue = [37, 99, 235]; // #2563eb
+    const accentAmber = [245, 158, 11]; // #f59e0b
+    const darkGray = [55, 65, 81]; // #374151
+    const lightGray = [156, 163, 175]; // #9ca3af
+    const successGreen = [34, 197, 94]; // #22c55e
+    const dangerRed = [239, 68, 68]; // #ef4444
     
-    doc.setFontSize(12);
+    // Header com logo e identidade visual
+    doc.setFillColor(...primaryBlue);
+    doc.rect(0, 0, 210, 25, 'F');
+    
+    // Logo LegalX
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text('Legal', 20, 17);
+    doc.setTextColor(...accentAmber);
+    doc.text('X', 50, 17);
+    
+    // Subtítulo
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text(`Período: ${selectedPeriod === 'month' ? 'Janeiro 2024' : 'Ano 2024'}`, 105, 45, { align: 'center' });
+    doc.text('Sistema de Gestão Jurídica', 20, 22);
+    
+    // Título do documento
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('RELATÓRIO FINANCEIRO E OPERACIONAL', 105, 45, { align: 'center' });
+    
+    // Linha decorativa
+    doc.setDrawColor(...accentAmber);
+    doc.setLineWidth(2);
+    doc.line(20, 50, 190, 50);
+    
+    doc.setTextColor(...lightGray);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Período: ${selectedPeriod === 'month' ? 'Mês Atual' : selectedPeriod === 'quarter' ? 'Trimestre' : 'Ano'}`, 105, 55, { align: 'center' });
     
     let yPosition = 70;
     
-    // Financial Summary
-    doc.setFontSize(16);
+    // Resumo Financeiro com boxes coloridos
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.text('RESUMO FINANCEIRO', 20, yPosition);
     yPosition += 15;
     
-    doc.setFontSize(12);
+    // Box para receitas
+    doc.setFillColor(240, 253, 244); // bg-green-50
+    doc.setDrawColor(...successGreen);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(20, yPosition - 5, 170, 12, 2, 2, 'FD');
+    
+    doc.setTextColor(...successGreen);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
-    doc.text(`Total de Receitas: ${formatCurrency(totalRevenue)}`, 20, yPosition);
+    doc.text(`✓ Total de Receitas: ${formatCurrency(totalRevenue)}`, 25, yPosition + 3);
     yPosition += 10;
-    doc.text(`Total de Despesas: ${formatCurrency(totalExpenses)}`, 20, yPosition);
+    
+    // Box para despesas
+    doc.setFillColor(254, 242, 242); // bg-red-50
+    doc.setDrawColor(...dangerRed);
+    doc.roundedRect(20, yPosition - 5, 170, 12, 2, 2, 'FD');
+    
+    doc.setTextColor(...dangerRed);
+    doc.text(`✗ Total de Despesas: ${formatCurrency(totalExpenses)}`, 25, yPosition + 3);
     yPosition += 10;
-    doc.text(`Lucro Líquido: ${formatCurrency(netProfit)}`, 20, yPosition);
+    
+    // Box para lucro líquido
+    const profitColor = netProfit >= 0 ? successGreen : dangerRed;
+    const profitBg = netProfit >= 0 ? [240, 253, 244] : [254, 242, 242];
+    doc.setFillColor(...profitBg);
+    doc.setDrawColor(...profitColor);
+    doc.setLineWidth(1);
+    doc.roundedRect(20, yPosition - 5, 170, 12, 2, 2, 'FD');
+    
+    doc.setTextColor(...profitColor);
+    doc.setFont(undefined, 'bold');
+    doc.text(`${netProfit >= 0 ? '↗' : '↘'} Lucro Líquido: ${formatCurrency(netProfit)}`, 25, yPosition + 3);
     yPosition += 20;
     
-    // Process Summary
-    doc.setFontSize(16);
+    // Resumo de Processos
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.text('RESUMO DE PROCESSOS', 20, yPosition);
     yPosition += 15;
     
-    doc.setFontSize(12);
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
-    doc.text(`Processos em Andamento: ${activeProcesses}`, 20, yPosition);
+    doc.text(`• Processos em Andamento: ${activeProcesses}`, 25, yPosition);
     yPosition += 10;
-    doc.text(`Processos Concluídos: ${completedProcesses}`, 20, yPosition);
+    doc.text(`• Processos Concluídos: ${completedProcesses}`, 25, yPosition);
     yPosition += 10;
-    doc.text(`Total de Processos: ${activeProcesses + completedProcesses}`, 20, yPosition);
+    doc.text(`• Total de Processos: ${activeProcesses + completedProcesses}`, 25, yPosition);
     yPosition += 20;
     
-    // Events Summary
-    doc.setFontSize(16);
+    // Resumo de Eventos
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.text('RESUMO DE EVENTOS', 20, yPosition);
     yPosition += 15;
     
-    doc.setFontSize(12);
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
-    doc.text(`Total de Eventos: ${totalEvents}`, 20, yPosition);
+    doc.text(`• Total de Eventos: ${totalEvents}`, 25, yPosition);
     yPosition += 10;
-    doc.text(`Eventos Concluídos: ${completedEvents}`, 20, yPosition);
+    doc.text(`• Eventos Concluídos: ${completedEvents}`, 25, yPosition);
     yPosition += 10;
-    doc.text(`Taxa de Conclusão: ${((completedEvents / totalEvents) * 100).toFixed(1)}%`, 20, yPosition);
+    doc.text(`• Taxa de Conclusão: ${totalEvents > 0 ? ((completedEvents / totalEvents) * 100).toFixed(1) : 0}%`, 25, yPosition);
     
-    // Footer
-    doc.setFontSize(10);
-    doc.text(`Relatório gerado em ${new Date().toLocaleDateString('pt-BR')}`, 20, 280);
-    doc.text('LegalX - Sistema de Gestão Jurídica', 20, 290);
+    // Footer com informações do sistema
+    doc.setDrawColor(...lightGray);
+    doc.setLineWidth(0.5);
+    doc.line(20, 280, 190, 280);
+    
+    doc.setTextColor(...lightGray);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text('Relatório gerado pelo LegalX - Sistema de Gestão Jurídica', 20, 285);
+    doc.text(`Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 20, 290);
+    
+    // Número da página
+    doc.text('Página 1 de 1', 190, 290, { align: 'right' });
     
     doc.save(`relatorio_${selectedPeriod}_${new Date().toISOString().split('T')[0]}.pdf`);
   };

@@ -105,26 +105,67 @@ export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
   const generatePDF = (data: ReceiptData) => {
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.text('RECIBO', 105, 30, { align: 'center' });
+    // Cores da identidade visual
+    const primaryBlue = [37, 99, 235]; // #2563eb
+    const accentAmber = [245, 158, 11]; // #f59e0b
+    const darkGray = [55, 65, 81]; // #374151
+    const lightGray = [156, 163, 175]; // #9ca3af
+    const successGreen = [34, 197, 94]; // #22c55e
     
-    // Amount
-    doc.setFontSize(14);
-    doc.text(`Valor: ${formatCurrency(data.amount)}`, 105, 50, { align: 'center' });
+    // Header com logo e identidade visual
+    doc.setFillColor(...primaryBlue);
+    doc.rect(0, 0, 210, 25, 'F');
+    
+    // Logo LegalX
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text('Legal', 20, 17);
+    doc.setTextColor(...accentAmber);
+    doc.text('X', 50, 17);
+    
+    // Subtítulo
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Sistema de Gestão Jurídica', 20, 22);
+    
+    // Título do documento
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('RECIBO', 105, 45, { align: 'center' });
+    
+    // Linha decorativa
+    doc.setDrawColor(...accentAmber);
+    doc.setLineWidth(2);
+    doc.line(20, 50, 190, 50);
+    
+    // Box com valor em destaque
+    doc.setFillColor(248, 250, 252); // bg-slate-50
+    doc.setDrawColor(...successGreen);
+    doc.setLineWidth(1);
+    doc.roundedRect(20, 55, 170, 20, 3, 3, 'FD');
+    
+    // Valor em destaque
+    doc.setTextColor(...successGreen);
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Valor: ${formatCurrency(data.amount)}`, 105, 67, { align: 'center' });
     
     // Content
-    doc.setFontSize(12);
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
     
-    let yPosition = 80;
-    const lineHeight = 8;
+    let yPosition = 85;
+    const lineHeight = 6;
     
     const amountInWords = numberToWords(Math.floor(data.amount));
     const cents = Math.round((data.amount % 1) * 100);
     const centsInWords = cents > 0 ? ` e ${numberToWords(cents)} centavos` : '';
     
+    // Conteúdo principal com formatação melhorada
     const content = `
 Recebi de ${data.clientName} a importância de ${formatCurrency(data.amount)} 
 (${amountInWords} reais${centsInWords}), referente a ${data.description}.
@@ -152,6 +193,26 @@ CPF: ${data.lawyerCpf}
       doc.text(line, 20, yPosition);
       yPosition += lineHeight;
     });
+    
+    // Footer com informações do sistema
+    doc.setDrawColor(...lightGray);
+    doc.setLineWidth(0.5);
+    doc.line(20, 280, 190, 280);
+    
+    doc.setTextColor(...lightGray);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text('Documento gerado pelo LegalX - Sistema de Gestão Jurídica', 20, 285);
+    doc.text(`Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 20, 290);
+    
+    // Número da página (se necessário)
+    const pageCount = doc.internal.getNumberOfPages();
+    if (pageCount > 1) {
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
+      }
+    }
 
     // Save PDF
     doc.save(`recibo_${data.clientName.replace(/\s+/g, '_').toLowerCase()}.pdf`);
