@@ -337,7 +337,20 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {revenue.responsibleLawyer || '-'}
+                      <div>
+                        {revenue.responsibleLawyers && revenue.responsibleLawyers.length > 0 ? (
+                          <>
+                            <div className="font-medium">{revenue.responsibleLawyers[0]}</div>
+                            {revenue.responsibleLawyers.length > 1 && (
+                              <div className="text-xs text-gray-500">
+                                +{revenue.responsibleLawyers.length - 1} outros
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
                       {formatCurrency(revenue.amount)}
@@ -428,7 +441,20 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.responsibleLawyer || '-'}
+                      <div>
+                        {expense.responsibleLawyers && expense.responsibleLawyers.length > 0 ? (
+                          <>
+                            <div className="font-medium">{expense.responsibleLawyers[0]}</div>
+                            {expense.responsibleLawyers.length > 1 && (
+                              <div className="text-xs text-gray-500">
+                                +{expense.responsibleLawyers.length - 1} outros
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
                       {formatCurrency(expense.amount)}

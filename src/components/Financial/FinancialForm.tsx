@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Revenue, Expense, Lawyer } from '../../types';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { localStorageService } from '../../services/localStorage';
 
 const revenueSchema = yup.object({
@@ -11,7 +11,7 @@ const revenueSchema = yup.object({
   amount: yup.number().positive('Valor deve ser positivo').required('Valor é obrigatório'),
   source: yup.string().required('Fonte é obrigatória'),
   category: yup.string().required('Categoria é obrigatória'),
-  responsibleLawyer: yup.string(),
+  responsibleLawyers: yup.array(),
   client: yup.string(),
   description: yup.string()
 });
@@ -21,7 +21,7 @@ const expenseSchema = yup.object({
   amount: yup.number().positive('Valor deve ser positivo').required('Valor é obrigatório'),
   type: yup.string().required('Tipo é obrigatório'),
   category: yup.string().required('Categoria é obrigatória'),
-  responsibleLawyer: yup.string(),
+  responsibleLawyers: yup.array(),
   description: yup.string(),
   receipt: yup.string()
 });
@@ -35,6 +35,9 @@ interface FinancialFormProps {
 
 export default function FinancialForm({ type, item, onBack, onSave }: FinancialFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>(
+    (item as any)?.responsibleLawyers || []
+  );
   const schema = type === 'revenue' ? revenueSchema : expenseSchema;
   
   const {
@@ -56,12 +59,24 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
       Object.keys(item).forEach((key) => {
         setValue(key as any, (item as any)[key]);
       });
+      setSelectedLawyers((item as any)?.responsibleLawyers || []);
     }
   }, [item, setValue]);
+
+  const handleLawyerToggle = (lawyerName: string) => {
+    setSelectedLawyers(prev => {
+      if (prev.includes(lawyerName)) {
+        return prev.filter(name => name !== lawyerName);
+      } else {
+        return [...prev, lawyerName];
+      }
+    });
+  };
 
   const onSubmit = (data: any) => {
     const itemData = {
       id: item?.id || Date.now().toString(),
+      responsibleLawyers: selectedLawyers,
       ...data
     };
     
@@ -173,19 +188,50 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Advogado Responsável
+                    Advogados Responsáveis
                   </label>
-                  <select
-                    {...register('responsibleLawyer')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecione um advogado (opcional)</option>
-                    {lawyers.map((lawyer) => (
-                      <option key={lawyer.id} value={lawyer.fullName}>
-                        {lawyer.fullName} - OAB: {lawyer.oab}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="border border-gray-300 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    {lawyers.length > 0 ? (
+                      <div className="space-y-2">
+                        {lawyers.map((lawyer) => (
+                          <label key={lawyer.id} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedLawyers.includes(lawyer.fullName)}
+                              onChange={() => handleLawyerToggle(lawyer.fullName)}
+                              className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {lawyer.fullName} - OAB: {lawyer.oab}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
+                    )}
+                  </div>
+                  {selectedLawyers.length > 0 && (
+                    <div className="mt-2">
+                      <div className="flex flex-wrap gap-1">
+                        {selectedLawyers.map((lawyer, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {lawyer}
+                            <button
+                              type="button"
+                              onClick={() => handleLawyerToggle(lawyer)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <XMarkIcon className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -237,19 +283,50 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Advogado Responsável
+                    Advogados Responsáveis
                   </label>
-                  <select
-                    {...register('responsibleLawyer')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecione um advogado (opcional)</option>
-                    {lawyers.map((lawyer) => (
-                      <option key={lawyer.id} value={lawyer.fullName}>
-                        {lawyer.fullName} - OAB: {lawyer.oab}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="border border-gray-300 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    {lawyers.length > 0 ? (
+                      <div className="space-y-2">
+                        {lawyers.map((lawyer) => (
+                          <label key={lawyer.id} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedLawyers.includes(lawyer.fullName)}
+                              onChange={() => handleLawyerToggle(lawyer.fullName)}
+                              className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {lawyer.fullName} - OAB: {lawyer.oab}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
+                    )}
+                  </div>
+                  {selectedLawyers.length > 0 && (
+                    <div className="mt-2">
+                      <div className="flex flex-wrap gap-1">
+                        {selectedLawyers.map((lawyer, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {lawyer}
+                            <button
+                              type="button"
+                              onClick={() => handleLawyerToggle(lawyer)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <XMarkIcon className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

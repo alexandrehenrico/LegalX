@@ -214,7 +214,7 @@ export class DataManager {
           client: 'João da Silva',
           opposingParty: 'Empresa ABC Ltda.',
           court: 'TRT 2ª Região - 15ª Vara do Trabalho',
-          responsibleLawyer: 'Dr. Maria Santos Silva',
+          responsibleLawyers: ['Dr. Maria Santos Silva', 'Dr. João Carlos Oliveira'],
           startDate: '2024-01-15',
           status: 'Em andamento',
           description: 'Ação de cobrança de verbas rescisórias e danos morais por demissão sem justa causa.',
@@ -231,7 +231,7 @@ export class DataManager {
           location: 'TRT 2ª Região - Sala 205',
           notes: 'Audiência de conciliação',
           status: 'Pendente',
-          lawyer: 'Dr. Maria Santos Silva'
+          lawyers: ['Dr. Maria Santos Silva']
         });
 
         // Receita de exemplo
@@ -240,7 +240,7 @@ export class DataManager {
           amount: 2500,
           source: 'João da Silva',
           category: 'Honorário',
-          responsibleLawyer: 'Dr. Maria Santos Silva',
+          responsibleLawyers: ['Dr. Maria Santos Silva'],
           client: 'João da Silva',
           description: 'Honorários contratuais - Ação Trabalhista'
         });
@@ -251,7 +251,7 @@ export class DataManager {
           amount: 1200,
           type: 'Aluguel do escritório',
           category: 'Aluguel',
-          responsibleLawyer: 'Dr. João Carlos Oliveira',
+          responsibleLawyers: ['Dr. João Carlos Oliveira'],
           description: 'Aluguel mensal do escritório - Janeiro 2024'
         });
 
