@@ -442,10 +442,77 @@ export default function Financial({ quickActionType, onClearQuickAction }: Finan
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
-                        {expense.responsibleLawyers && expense.responsibleLawyers.length > 0 ? (
+                        {((expense.responsibleMembers && expense.responsibleMembers.length > 0) || 
+                          (expense.responsibleLawyers && expense.responsibleLawyers.length > 0)) ? (
                           <>
-                            <div className="font-medium">{expense.responsibleLawyers[0]}</div>
-                            {expense.responsibleLawyers.length > 1 && (
+                            {(() => {
+                              const members = expense.responsibleMembers || expense.responsibleLawyers || [];
+                              return (
+                                <>
+                                  <div className="font-medium">{members[0]}</div>
+                                  {members.length > 1 && (
+                                    <div className="text-xs text-gray-500">
+                                      +{members.length - 1} outros
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                      {formatCurrency(expense.amount)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {expense.description}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => handleEditItem(expense, 'expense')}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                          title="Editar"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(expense.id, 'expense')}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                          title="Excluir"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Carregando despesas...</p>
+            </div>
+          ) : filteredExpenses.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">
+                {expenses.length === 0 
+                  ? 'Nenhuma despesa cadastrada. Clique em "Nova Despesa" para começar.' 
+                  : 'Nenhuma despesa encontrada com os filtros aplicados.'
+                }
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
                               <div className="text-xs text-gray-500">
                                 +{expense.responsibleLawyers.length - 1} outros
                               </div>

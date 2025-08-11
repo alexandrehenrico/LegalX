@@ -45,6 +45,7 @@ export interface Expense {
   type: string;
   category: 'Aluguel' | 'Internet' | 'Material' | 'Outro';
   responsibleLawyers?: string[];
+  responsibleMembers?: string[];
   description?: string;
   receipt?: string;
 }
