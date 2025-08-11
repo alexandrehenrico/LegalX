@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import PowerOfAttorneyForm from './PowerOfAttorneyForm';
 import ReceiptForm from './ReceiptForm';
+import DocumentViewer from './DocumentViewer';
 import { localStorageService } from '../../services/localStorage';
 import { Document } from '../../types';
-import { DocumentTextIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, ReceiptPercentIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -14,6 +15,7 @@ interface DocumentGeneratorProps {
 
 export default function DocumentGenerator({ quickActionType, onClearQuickAction }: DocumentGeneratorProps) {
   const [activeDocument, setActiveDocument] = useState<'power-of-attorney' | 'receipt' | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
 
   useEffect(() => {
@@ -34,6 +36,13 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
     setDocuments(localStorageService.getDocuments());
   };
 
+  const handleViewDocument = (document: Document) => {
+    setViewingDocument(document);
+  };
+
+  const handleBackFromViewer = () => {
+    setViewingDocument(null);
+  };
   if (activeDocument === 'power-of-attorney') {
     return (
       <PowerOfAttorneyForm
@@ -52,6 +61,14 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
     );
   }
 
+  if (viewingDocument) {
+    return (
+      <DocumentViewer
+        document={viewingDocument}
+        onBack={handleBackFromViewer}
+      />
+    );
+  }
   return (
     <div className="p-6">
       {/* Header */}
@@ -139,6 +156,14 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
                       }`}>
                         {document.type}
                       </span>
+                      <button
+                        onClick={() => handleViewDocument(document)}
+                        className="flex items-center px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        title="Visualizar documento"
+                      >
+                        <EyeIcon className="w-3 h-3 mr-1" />
+                        Ver
+                      </button>
                     </div>
                   </div>
                 </div>
