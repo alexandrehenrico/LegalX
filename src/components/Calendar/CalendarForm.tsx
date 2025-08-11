@@ -15,7 +15,7 @@ const schema = yup.object({
   type: yup.string().required('Tipo é obrigatório'),
   location: yup.string(),
   notes: yup.string(),
-  lawyer: yup.string().required('Advogado é obrigatório')
+  lawyers: yup.array().min(1, 'Pelo menos um advogado é obrigatório')
 });
 
 interface CalendarFormProps {
@@ -27,6 +27,7 @@ interface CalendarFormProps {
 
 export default function CalendarForm({ event, selectedDate, onBack, onSave }: CalendarFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>(event?.lawyers || []);
   
   const {
     register,
@@ -50,15 +51,26 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
       Object.keys(event).forEach((key) => {
         setValue(key as keyof CalendarEvent, event[key as keyof CalendarEvent]);
       });
+      setSelectedLawyers(event.lawyers || []);
     } else if (selectedDate) {
       setValue('date', format(selectedDate, 'yyyy-MM-dd'));
     }
   }, [event, selectedDate, setValue]);
 
+  const handleLawyerToggle = (lawyerName: string) => {
+    setSelectedLawyers(prev => {
+      if (prev.includes(lawyerName)) {
+        return prev.filter(name => name !== lawyerName);
+      } else {
+        return [...prev, lawyerName];
+      }
+    });
+  };
   const onSubmit = (data: Partial<CalendarEvent>) => {
     const eventData: CalendarEvent = {
       id: event?.id || Date.now().toString(),
       status: 'Pendente',
+      lawyers: selectedLawyers,
       ...data
     } as CalendarEvent;
     
@@ -177,21 +189,53 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Advogado Responsável *
+                Advogados Responsáveis *
               </label>
-              <select
-                {...register('lawyer')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione um advogado</option>
-                {lawyers.map((lawyer) => (
-                  <option key={lawyer.id} value={lawyer.fullName}>
-                    {lawyer.fullName} - OAB: {lawyer.oab}
-                  </option>
-                ))}
-              </select>
-              {errors.lawyer && (
-                <p className="text-red-500 text-sm mt-1">{errors.lawyer.message}</p>
+              <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                {lawyers.length > 0 ? (
+                  <div className="space-y-2">
+                    {lawyers.map((lawyer) => (
+                      <label key={lawyer.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedLawyers.includes(lawyer.fullName)}
+                          onChange={() => handleLawyerToggle(lawyer.fullName)}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {lawyer.fullName} - OAB: {lawyer.oab}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
+                )}
+              </div>
+              {selectedLawyers.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">Selecionados:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedLawyers.map((lawyer, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {lawyer}
+                        <button
+                          type="button"
+                          onClick={() => handleLawyerToggle(lawyer)}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedLawyers.length === 0 && (
+                <p className="text-red-500 text-sm mt-1">Pelo menos um advogado é obrigatório</p>
               )}
               {lawyers.length === 0 && (
                 <p className="text-amber-600 text-sm mt-1">

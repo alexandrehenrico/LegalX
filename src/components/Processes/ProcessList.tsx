@@ -150,7 +150,20 @@ export default function ProcessList({ onNewProcess, onViewProcess, onEditProcess
                     {process.client}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {process.responsibleLawyer}
+                    <div>
+                      {process.responsibleLawyers && process.responsibleLawyers.length > 0 ? (
+                        <>
+                          <div className="font-medium">{process.responsibleLawyers[0]}</div>
+                          {process.responsibleLawyers.length > 1 && (
+                            <div className="text-xs text-gray-500">
+                              +{process.responsibleLawyers.length - 1} outros
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Não definido</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(process.startDate)}

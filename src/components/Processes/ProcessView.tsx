@@ -123,9 +123,24 @@ export default function ProcessView({ process, onBack, onEdit, onUpdate }: Proce
 
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">
-                Advogado Responsável
+                Advogados Responsáveis
               </label>
-              <p className="text-gray-900">{process.responsibleLawyer}</p>
+              <div>
+                {process.responsibleLawyers && process.responsibleLawyers.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {process.responsibleLawyers.map((lawyer, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-full"
+                      >
+                        {lawyer}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400">Não definido</p>
+                )}
+              </div>
             </div>
 
             <div>

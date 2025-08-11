@@ -12,8 +12,7 @@ const schema = yup.object({
   clientCpf: yup.string().required('CPF do cliente é obrigatório'),
   clientRg: yup.string().required('RG do cliente é obrigatório'),
   clientAddress: yup.string().required('Endereço do cliente é obrigatório'),
-  lawyerName: yup.string().required('Nome do advogado é obrigatório'),
-  lawyerOab: yup.string().required('OAB do advogado é obrigatória'),
+  lawyers: yup.array().min(1, 'Pelo menos um advogado é obrigatório'),
   type: yup.string().required('Tipo de procuração é obrigatório'),
   object: yup.string().required('Objeto da procuração é obrigatório'),
   location: yup.string().required('Local é obrigatório'),
@@ -30,8 +29,7 @@ interface PowerOfAttorneyData {
   clientCpf: string;
   clientRg: string;
   clientAddress: string;
-  lawyerName: string;
-  lawyerOab: string;
+  lawyers: string[];
   type: string;
   object: string;
   location: string;
@@ -40,6 +38,7 @@ interface PowerOfAttorneyData {
 
 export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>([]);
   
   const {
     register,
@@ -59,6 +58,15 @@ export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyF
     setLawyers(loadedLawyers);
   }, []);
 
+  const handleLawyerToggle = (lawyerName: string) => {
+    setSelectedLawyers(prev => {
+      if (prev.includes(lawyerName)) {
+        return prev.filter(name => name !== lawyerName);
+      } else {
+        return [...prev, lawyerName];
+      }
+    });
+  };
   const generatePDF = (data: PowerOfAttorneyData) => {
     const doc = new jsPDF();
     
@@ -74,13 +82,21 @@ export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyF
     let yPosition = 60;
     const lineHeight = 8;
     
+    const lawyersText = selectedLawyers.length > 1 
+      ? `os(as) Srs(as). ${selectedLawyers.join(', ')}`
+      : `o(a) Sr(a). ${selectedLawyers[0]}`;
+    
+    const lawyersOab = selectedLawyers.map(name => {
+      const lawyer = lawyers.find(l => l.fullName === name);
+      return lawyer ? `${name} (OAB ${lawyer.oab})` : name;
+    }).join(', ');
     const content = `
 Pelo presente instrumento particular de procuração, eu, ${data.clientName}, 
 ${data.clientCpf.includes('.') ? 'CPF' : 'CPF'} nº ${data.clientCpf}, RG nº ${data.clientRg}, 
 residente e domiciliado em ${data.clientAddress}, 
 
-NOMEIO e CONSTITUO como meu bastante procurador o(a) Sr(a). ${data.lawyerName}, 
-inscrito(a) na OAB sob nº ${data.lawyerOab}, para o fim específico de:
+NOMEIO e CONSTITUO como ${selectedLawyers.length > 1 ? 'meus bastantes procuradores' : 'meu bastante procurador'} ${lawyersText}, 
+${selectedLawyers.length > 1 ? 'inscritos na OAB' : 'inscrito(a) na OAB'} (${lawyersOab}), para o fim específico de:
 
 ${data.object}
 
@@ -114,6 +130,11 @@ Outorgante
   };
 
   const onSubmit = (data: PowerOfAttorneyData) => {
+    if (selectedLawyers.length === 0) {
+      alert('Selecione pelo menos um advogado.');
+      return;
+    }
+    
     try {
       // Salvar documento no localStorage
       const savedDocument = localStorageService.saveDocument({
@@ -124,8 +145,7 @@ Outorgante
           object: data.object,
           location: data.location,
           date: data.date,
-          lawyerName: data.lawyerName,
-          lawyerOab: data.lawyerOab
+          lawyers: selectedLawyers
         }
       });
       
@@ -140,7 +160,7 @@ Outorgante
       alert('Erro ao salvar procuração no sistema. Tente novamente.');
     }
     
-    generatePDF(data);
+    generatePDF({ ...data, lawyers: selectedLawyers });
   };
 
   return (
@@ -232,56 +252,61 @@ Outorgante
           {/* Lawyer Information */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Dados do Advogado (Outorgado)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Advogado *
-                </label>
-                <select
-                  {...register('lawyerName')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onChange={(e) => {
-                    const selectedLawyer = lawyers.find(l => l.fullName === e.target.value);
-                    if (selectedLawyer) {
-                      setValue('lawyerOab', selectedLawyer.oab);
-                    }
-                  }}
-                >
-                  <option value="">Selecione um advogado</option>
-                  {lawyers.map((lawyer) => (
-                    <option key={lawyer.id} value={lawyer.fullName}>
-                      {lawyer.fullName} - OAB: {lawyer.oab}
-                    </option>
-                  ))}
-                </select>
-                {errors.lawyerName && (
-                  <p className="text-red-500 text-sm mt-1">{errors.lawyerName.message}</p>
-                )}
-                {lawyers.length === 0 && (
-                  <p className="text-amber-600 text-sm mt-1">
-                    Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
-                  </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Advogados Outorgados *
+              </label>
+              <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                {lawyers.length > 0 ? (
+                  <div className="space-y-2">
+                    {lawyers.map((lawyer) => (
+                      <label key={lawyer.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedLawyers.includes(lawyer.fullName)}
+                          onChange={() => handleLawyerToggle(lawyer.fullName)}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {lawyer.fullName} - OAB: {lawyer.oab}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  OAB *
-                </label>
-                <input
-                  {...register('lawyerOab')}
-                  type="text"
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="00000/UF"
-                />
-                {errors.lawyerOab && (
-                  <p className="text-red-500 text-sm mt-1">{errors.lawyerOab.message}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Preenchido automaticamente ao selecionar o advogado
+              {selectedLawyers.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">Selecionados:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedLawyers.map((lawyer, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {lawyer}
+                        <button
+                          type="button"
+                          onClick={() => handleLawyerToggle(lawyer)}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedLawyers.length === 0 && (
+                <p className="text-red-500 text-sm mt-1">Pelo menos um advogado é obrigatório</p>
+              )}
+              {lawyers.length === 0 && (
+                <p className="text-amber-600 text-sm mt-1">
+                  Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
                 </p>
-              </div>
+              )}
             </div>
           </div>
 

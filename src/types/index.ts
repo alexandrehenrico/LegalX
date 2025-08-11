@@ -5,7 +5,7 @@ export interface Process {
   client: string;
   opposingParty?: string;
   court: string;
-  responsibleLawyer: string;
+  responsibleLawyers: string[];
   startDate: string;
   status: 'Em andamento' | 'Concluído';
   description: string;
@@ -24,7 +24,7 @@ export interface CalendarEvent {
   location?: string;
   notes?: string;
   status: 'Pendente' | 'Concluído';
-  lawyer: string;
+  lawyers: string[];
 }
 
 export interface Revenue {
@@ -33,7 +33,7 @@ export interface Revenue {
   amount: number;
   source: string;
   category: 'Honorário' | 'Consultoria' | 'Outro';
-  responsibleLawyer?: string;
+  responsibleLawyers?: string[];
   client?: string;
   description?: string;
 }
@@ -44,7 +44,7 @@ export interface Expense {
   amount: number;
   type: string;
   category: 'Aluguel' | 'Internet' | 'Material' | 'Outro';
-  responsibleLawyer?: string;
+  responsibleLawyers?: string[];
   description?: string;
   receipt?: string;
 }
