@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalendarEvent } from '../../types';
 import { localStorageService } from '../../services/localStorage';
 import CalendarForm from './CalendarForm';
+import EventView from './EventView';
 import { 
   ChevronLeftIcon, 
   ChevronRightIcon,
@@ -23,6 +24,7 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [showForm, setShowForm] = useState(false);
+  const [showEventView, setShowEventView] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,11 +71,18 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
     setSelectedDate(date || null);
     setSelectedEvent(null);
     setShowForm(true);
+    setShowEventView(false);
   };
 
+  const handleViewEvent = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShowEventView(true);
+    setShowForm(false);
+  };
   const handleEditEvent = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setShowForm(true);
+    setShowEventView(false);
   };
 
   const handleSaveEvent = (eventData: CalendarEvent) => {
@@ -93,6 +102,7 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
       }
       
       setShowForm(false);
+      setShowEventView(false);
       setSelectedEvent(null);
       setSelectedDate(null);
     } catch (error) {
@@ -107,6 +117,8 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
         const success = localStorageService.deleteEvent(eventId);
         if (success) {
           loadEvents(); // Recarregar eventos
+          setShowEventView(false);
+          setSelectedEvent(null);
         }
       } catch (error) {
         console.error('Erro ao excluir evento:', error);
@@ -115,21 +127,37 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
     }
   };
 
+  const handleBackToCalendar = () => {
+    setShowForm(false);
+    setShowEventView(false);
+    setSelectedEvent(null);
+    setSelectedDate(null);
+  };
   if (showForm) {
     return (
       <CalendarForm
         event={selectedEvent}
         selectedDate={selectedDate}
-        onBack={() => {
-          setShowForm(false);
-          setSelectedEvent(null);
-          setSelectedDate(null);
-        }}
+        onBack={handleBackToCalendar}
         onSave={handleSaveEvent}
       />
     );
   }
 
+  if (showEventView && selectedEvent) {
+    return (
+      <EventView
+        event={selectedEvent}
+        onBack={handleBackToCalendar}
+        onEdit={() => handleEditEvent(selectedEvent)}
+        onDelete={() => handleDeleteEvent(selectedEvent.id)}
+        onUpdate={(updatedEvent) => {
+          setSelectedEvent(updatedEvent);
+          loadEvents();
+        }}
+      />
+    );
+  }
   return (
     <div className="p-6">
       {/* Header */}
@@ -222,7 +250,7 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
             return (
               <div
                 key={day.toISOString()}
-                className={`min-h-32 p-2 ${
+                className={`min-h-32 p-2 group ${
                   isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                 } hover:bg-gray-50 transition-colors`}
               >
@@ -261,10 +289,20 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                       title={`${event.title} - ${event.time}`}
+                      onClick={() => handleViewEvent(event)}
                     >
                       <div className="flex items-center justify-between">
                         <span className="truncate">{event.title}</span>
                         <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewEvent(event);
+                            }}
+                            className="text-gray-500 hover:text-blue-600"
+                          >
+                            <EyeIcon className="w-3 h-3" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
