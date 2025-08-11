@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Revenue, Expense, Lawyer } from '../../types';
+import { Revenue, Expense, Lawyer, Employee } from '../../types';
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { localStorageService } from '../../services/localStorage';
 
@@ -21,7 +21,7 @@ const expenseSchema = yup.object({
   amount: yup.number().positive('Valor deve ser positivo').required('Valor é obrigatório'),
   type: yup.string().required('Tipo é obrigatório'),
   category: yup.string().required('Categoria é obrigatória'),
-  responsibleLawyers: yup.array(),
+  responsibleMembers: yup.array(),
   description: yup.string(),
   receipt: yup.string()
 });
@@ -35,8 +35,9 @@ interface FinancialFormProps {
 
 export default function FinancialForm({ type, item, onBack, onSave }: FinancialFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
-  const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>(
-    (item as any)?.responsibleLawyers || []
+  const [employees, setEmployees] = React.useState<Employee[]>([]);
+  const [selectedMembers, setSelectedMembers] = React.useState<string[]>(
+    (item as any)?.responsibleLawyers || (item as any)?.responsibleMembers || []
   );
   const schema = type === 'revenue' ? revenueSchema : expenseSchema;
   
@@ -53,22 +54,26 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
   useEffect(() => {
     // Carregar advogados ativos
     const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
+    const loadedEmployees = localStorageService.getEmployees().filter(e => e.status === 'Ativo');
     setLawyers(loadedLawyers);
+    setEmployees(loadedEmployees);
     
     if (item) {
       Object.keys(item).forEach((key) => {
         setValue(key as any, (item as any)[key]);
       });
-      setSelectedLawyers((item as any)?.responsibleLawyers || []);
+      // Manter compatibilidade com dados antigos
+      const responsibleMembers = (item as any)?.responsibleMembers || (item as any)?.responsibleLawyers || [];
+      setSelectedMembers(responsibleMembers);
     }
   }, [item, setValue]);
 
-  const handleLawyerToggle = (lawyerName: string) => {
-    setSelectedLawyers(prev => {
-      if (prev.includes(lawyerName)) {
-        return prev.filter(name => name !== lawyerName);
+  const handleMemberToggle = (memberName: string) => {
+    setSelectedMembers(prev => {
+      if (prev.includes(memberName)) {
+        return prev.filter(name => name !== memberName);
       } else {
-        return [...prev, lawyerName];
+        return [...prev, memberName];
       }
     });
   };
@@ -76,7 +81,9 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
   const onSubmit = (data: any) => {
     const itemData = {
       id: item?.id || Date.now().toString(),
-      responsibleLawyers: selectedLawyers,
+      responsibleMembers: selectedMembers,
+      // Manter compatibilidade com dados antigos para receitas
+      ...(type === 'revenue' && { responsibleLawyers: selectedMembers }),
       ...data
     };
     
@@ -188,49 +195,88 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Advogados Responsáveis
+                    Responsáveis
                   </label>
                   <div className="border border-gray-300 rounded-lg p-3 max-h-32 overflow-y-auto">
-                    {lawyers.length > 0 ? (
+                    {(lawyers.length > 0 || employees.length > 0) ? (
                       <div className="space-y-2">
-                        {lawyers.map((lawyer) => (
-                          <label key={lawyer.id} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedLawyers.includes(lawyer.fullName)}
-                              onChange={() => handleLawyerToggle(lawyer.fullName)}
-                              className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <span className="text-sm text-gray-700">
-                              {lawyer.fullName} - OAB: {lawyer.oab}
-                            </span>
-                          </label>
-                        ))}
+                        {/* Advogados */}
+                        {lawyers.length > 0 && (
+                          <>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Advogados</p>
+                            {lawyers.map((lawyer) => (
+                              <label key={`lawyer-${lawyer.id}`} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMembers.includes(lawyer.fullName)}
+                                  onChange={() => handleMemberToggle(lawyer.fullName)}
+                                  className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  {lawyer.fullName} - OAB: {lawyer.oab}
+                                </span>
+                              </label>
+                            ))}
+                          </>
+                        )}
+                        
+                        {/* Colaboradores */}
+                        {employees.length > 0 && (
+                          <>
+                            {lawyers.length > 0 && <div className="border-t border-gray-200 my-2"></div>}
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Colaboradores</p>
+                            {employees.map((employee) => (
+                              <label key={`employee-${employee.id}`} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMembers.includes(employee.fullName)}
+                                  onChange={() => handleMemberToggle(employee.fullName)}
+                                  className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  {employee.fullName} - {employee.position}
+                                </span>
+                              </label>
+                            ))}
+                          </>
+                        )}
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
+                      <p className="text-gray-500 text-sm">Nenhum responsável disponível</p>
                     )}
                   </div>
-                  {selectedLawyers.length > 0 && (
+                  {selectedMembers.length > 0 && (
                     <div className="mt-2">
                       <div className="flex flex-wrap gap-1">
-                        {selectedLawyers.map((lawyer, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            {lawyer}
-                            <button
-                              type="button"
-                              onClick={() => handleLawyerToggle(lawyer)}
-                              className="ml-1 text-blue-600 hover:text-blue-800"
+                        {selectedMembers.map((member, index) => {
+                          const isLawyer = lawyers.some(l => l.fullName === member);
+                          return (
+                            <span
+                              key={index}
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                isLawyer 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}
                             >
-                              <XMarkIcon className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
+                              {member}
+                              <button
+                                type="button"
+                                onClick={() => handleMemberToggle(member)}
+                                className={`ml-1 hover:${isLawyer ? 'text-blue-800' : 'text-green-800'}`}
+                              >
+                                <XMarkIcon className="w-3 h-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
+                  )}
+                  {(lawyers.length === 0 && employees.length === 0) && (
+                    <p className="text-amber-600 text-sm mt-1">
+                      Nenhum responsável ativo encontrado. Cadastre advogados ou colaboradores.
+                    </p>
                   )}
                 </div>
               </>
@@ -292,8 +338,8 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                           <label key={lawyer.id} className="flex items-center">
                             <input
                               type="checkbox"
-                              checked={selectedLawyers.includes(lawyer.fullName)}
-                              onChange={() => handleLawyerToggle(lawyer.fullName)}
+                              checked={selectedMembers.includes(lawyer.fullName)}
+                              onChange={() => handleMemberToggle(lawyer.fullName)}
                               className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                             <span className="text-sm text-gray-700">
@@ -306,18 +352,18 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                       <p className="text-gray-500 text-sm">Nenhum advogado disponível</p>
                     )}
                   </div>
-                  {selectedLawyers.length > 0 && (
+                  {selectedMembers.length > 0 && (
                     <div className="mt-2">
                       <div className="flex flex-wrap gap-1">
-                        {selectedLawyers.map((lawyer, index) => (
+                        {selectedMembers.map((member, index) => (
                           <span
                             key={index}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
-                            {lawyer}
+                            {member}
                             <button
                               type="button"
-                              onClick={() => handleLawyerToggle(lawyer)}
+                              onClick={() => handleMemberToggle(member)}
                               className="ml-1 text-blue-600 hover:text-blue-800"
                             >
                               <XMarkIcon className="w-3 h-3" />
