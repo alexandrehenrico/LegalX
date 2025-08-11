@@ -4,6 +4,8 @@ import { ArrowLeftIcon, DocumentArrowDownIcon, DocumentTextIcon } from '@heroico
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import { Document as DocxDocument, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, BorderStyle } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface DocumentViewerProps {
   document: Document;
@@ -214,7 +216,7 @@ CPF: ${docData.lawyerCpf || ''}
   };
 
   const generateWordDocument = () => {
-    let content = '';
+    let doc: DocxDocument;
     
     if (document.type === 'Procuração') {
       const docData = document.data;
@@ -222,60 +224,379 @@ CPF: ${docData.lawyerCpf || ''}
         ? `os(as) Srs(as). ${docData.lawyers.join(', ')}`
         : `o(a) Sr(a). ${docData.lawyers ? docData.lawyers[0] : 'Advogado'}`;
       
-      content = `PROCURAÇÃO
-
-Pelo presente instrumento particular de procuração, eu, ${document.client}, nomeio e constituo como ${docData.lawyers && docData.lawyers.length > 1 ? 'meus bastantes procuradores' : 'meu bastante procurador'} ${lawyersText}, para o fim específico de:
-
-${docData.object || 'Representação jurídica'}
-
-Outorgo-lhe poderes para representar-me ${docData.type === 'Ad Judicia' ? 'em juízo' : 'para os fins específicos acima descritos'}, podendo para tanto praticar todos os atos necessários ao bom e fiel cumprimento do presente mandato.
-
-Por ser verdade, firmo a presente.
-
-${docData.location || 'São Paulo'}, ${docData.date ? new Date(docData.date).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}.
-
-
-_________________________________
-${document.client}
-Outorgante
-
----
-Documento gerado pelo LegalX - Sistema de Gestão Jurídica
-Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+      doc = new DocxDocument({
+        sections: [{
+          properties: {},
+          children: [
+            // Header com logo
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "LegalX",
+                  bold: true,
+                  size: 32,
+                  color: "2563eb"
+                }),
+                new TextRun({
+                  text: " - Sistema de Gestão Jurídica",
+                  size: 20,
+                  color: "6b7280"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }),
+            
+            // Título
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "PROCURAÇÃO",
+                  bold: true,
+                  size: 32
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 600 }
+            }),
+            
+            // Conteúdo principal
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Pelo presente instrumento particular de procuração, eu, `
+                }),
+                new TextRun({
+                  text: document.client,
+                  bold: true
+                }),
+                new TextRun({
+                  text: `, nomeio e constituo como ${docData.lawyers && docData.lawyers.length > 1 ? 'meus bastantes procuradores' : 'meu bastante procurador'} `
+                }),
+                new TextRun({
+                  text: lawyersText,
+                  bold: true
+                }),
+                new TextRun({
+                  text: `, para o fim específico de:`
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 300 }
+            }),
+            
+            // Objeto da procuração
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: docData.object || 'Representação jurídica',
+                  bold: true,
+                  italics: true
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 300 }
+            }),
+            
+            // Poderes
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Outorgo-lhe poderes para representar-me ${docData.type === 'Ad Judicia' ? 'em juízo' : 'para os fins específicos acima descritos'}, podendo para tanto praticar todos os atos necessários ao bom e fiel cumprimento do presente mandato.`
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 400 }
+            }),
+            
+            // Encerramento
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Por ser verdade, firmo a presente."
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 600 }
+            }),
+            
+            // Data e local
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `${docData.location || 'São Paulo'}, ${docData.date ? new Date(docData.date).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}.`
+                })
+              ],
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 800 }
+            }),
+            
+            // Assinatura
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "_________________________________"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: document.client,
+                  bold: true
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Outorgante",
+                  size: 20,
+                  color: "6b7280"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 800 }
+            }),
+            
+            // Footer
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Documento gerado pelo LegalX - Sistema de Gestão Jurídica",
+                  size: 16,
+                  color: "9ca3af"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
+                  size: 16,
+                  color: "9ca3af"
+                })
+              ],
+              alignment: AlignmentType.CENTER
+            })
+          ]
+        }]
+      });
+      
     } else if (document.type === 'Recibo') {
       const docData = document.data;
       
-      content = `RECIBO
-
-Recebi de ${document.client} a importância de ${formatCurrency(docData.amount || 0)}, referente a ${docData.description || 'serviços jurídicos'}.
-
-Forma de pagamento: ${docData.paymentMethod || 'Não especificado'}
-
-Para clareza firmo o presente recibo.
-
-${docData.date ? new Date(docData.date).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
-
-
-_________________________________
-${docData.lawyerName || 'Advogado'}
-OAB: ${docData.lawyerOab || ''}
-CPF: ${docData.lawyerCpf || ''}
-
----
-Documento gerado pelo LegalX - Sistema de Gestão Jurídica
-Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+      doc = new DocxDocument({
+        sections: [{
+          properties: {},
+          children: [
+            // Header com logo
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "LegalX",
+                  bold: true,
+                  size: 32,
+                  color: "2563eb"
+                }),
+                new TextRun({
+                  text: " - Sistema de Gestão Jurídica",
+                  size: 20,
+                  color: "6b7280"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }),
+            
+            // Título
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "RECIBO",
+                  bold: true,
+                  size: 32
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }),
+            
+            // Valor em destaque
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Valor: ${formatCurrency(docData.amount || 0)}`,
+                  bold: true,
+                  size: 28,
+                  color: "22c55e"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 600 }
+            }),
+            
+            // Conteúdo principal
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Recebi de `
+                }),
+                new TextRun({
+                  text: document.client,
+                  bold: true
+                }),
+                new TextRun({
+                  text: ` a importância de `
+                }),
+                new TextRun({
+                  text: formatCurrency(docData.amount || 0),
+                  bold: true
+                }),
+                new TextRun({
+                  text: `, referente a `
+                }),
+                new TextRun({
+                  text: docData.description || 'serviços jurídicos',
+                  bold: true
+                }),
+                new TextRun({
+                  text: `.`
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 300 }
+            }),
+            
+            // Forma de pagamento
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Forma de pagamento: `
+                }),
+                new TextRun({
+                  text: docData.paymentMethod || 'Não especificado',
+                  bold: true
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 400 }
+            }),
+            
+            // Encerramento
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Para clareza firmo o presente recibo."
+                })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 600 }
+            }),
+            
+            // Data
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: docData.date ? new Date(docData.date).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')
+                })
+              ],
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 800 }
+            }),
+            
+            // Assinatura
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "_________________________________"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: docData.lawyerName || 'Advogado',
+                  bold: true
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `OAB: ${docData.lawyerOab || ''}`,
+                  size: 20,
+                  color: "6b7280"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `CPF: ${docData.lawyerCpf || ''}`,
+                  size: 20,
+                  color: "6b7280"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 800 }
+            }),
+            
+            // Footer
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Documento gerado pelo LegalX - Sistema de Gestão Jurídica",
+                  size: 16,
+                  color: "9ca3af"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 }
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Data de geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
+                  size: 16,
+                  color: "9ca3af"
+                })
+              ],
+              alignment: AlignmentType.CENTER
+            })
+          ]
+        }]
+      });
     }
 
-    // Criar e baixar arquivo de texto (simulando Word)
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${document.type.toLowerCase()}_${document.client.replace(/\s+/g, '_').toLowerCase()}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Gerar e baixar arquivo Word real
+    if (doc) {
+      Packer.toBlob(doc).then(blob => {
+        saveAs(blob, `${document.type.toLowerCase()}_${document.client.replace(/\s+/g, '_').toLowerCase()}.docx`);
+      }).catch(error => {
+        console.error('Erro ao gerar documento Word:', error);
+        alert('Erro ao gerar documento Word. Tente novamente.');
+      });
+    }
   };
 
   const handleDownloadPDF = () => {
