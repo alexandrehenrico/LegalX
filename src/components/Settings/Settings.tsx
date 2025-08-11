@@ -120,12 +120,12 @@ export default function Settings() {
                 <div className="flex items-center mt-2">
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${Math.min(stats.storageUsed?.percentage || 0, 100)}%` }}
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{ width: "20%" }}
                     ></div>
                   </div>
                   <span className="ml-2 text-xs text-gray-500">
-                    {formatBytes(stats.storageUsed?.used || 0)} / {formatBytes(stats.storageUsed?.total || 0)}
+                    {formatBytes(stats.storageUsed?.used || 0)} / ∞
                   </span>
                 </div>
               </div>
