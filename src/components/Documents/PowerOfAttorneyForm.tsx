@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Lawyer } from '../../types';
-import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, DocumentArrowDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
 import { localStorageService } from '../../services/localStorage';
 
