@@ -20,6 +20,7 @@ import {
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { startOfWeek, endOfWeek, addDays, startOfDay, endOfDay, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface CalendarProps {
@@ -121,10 +122,43 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Calcular dias baseado no modo de visualização
+  const getCalendarDays = () => {
+    switch (viewMode) {
+      case 'week':
+        const weekStart = startOfWeek(currentDate, { locale: ptBR });
+        const weekEnd = endOfWeek(currentDate, { locale: ptBR });
+        return eachDayOfInterval({ start: weekStart, end: weekEnd });
+      case 'day':
+        return [currentDate];
+      default: // month
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        // Incluir dias da semana anterior e posterior para completar o grid
+        const calendarStart = startOfWeek(monthStart, { locale: ptBR });
+        const calendarEnd = endOfWeek(monthEnd, { locale: ptBR });
+        return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    }
+  };
+
+  const calendarDays = getCalendarDays();
 
   const formatMonthYear = (date: Date) => {
-    return format(date, 'MMMM yyyy', { locale: ptBR });
+    switch (viewMode) {
+      case 'week':
+        const weekStart = startOfWeek(date, { locale: ptBR });
+        const weekEnd = endOfWeek(date, { locale: ptBR });
+        if (weekStart.getMonth() === weekEnd.getMonth()) {
+          return format(weekStart, 'MMMM yyyy', { locale: ptBR });
+        } else {
+          return `${format(weekStart, 'MMM', { locale: ptBR })} - ${format(weekEnd, 'MMM yyyy', { locale: ptBR })}`;
+        }
+      case 'day':
+        return format(date, 'dd \'de\' MMMM \'de\' yyyy', { locale: ptBR });
+      default:
+        return format(date, 'MMMM yyyy', { locale: ptBR });
+    }
   };
 
   // Função para filtrar eventos
@@ -247,6 +281,37 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
     setSelectedDate(null);
   };
 
+  const navigatePrevious = () => {
+    switch (viewMode) {
+      case 'week':
+        setCurrentDate(subWeeks(currentDate, 1));
+        break;
+      case 'day':
+        setCurrentDate(addDays(currentDate, -1));
+        break;
+      default: // month
+        setCurrentDate(subMonths(currentDate, 1));
+        break;
+    }
+  };
+
+  const navigateNext = () => {
+    switch (viewMode) {
+      case 'week':
+        setCurrentDate(addWeeks(currentDate, 1));
+        break;
+      case 'day':
+        setCurrentDate(addDays(currentDate, 1));
+        break;
+      default: // month
+        setCurrentDate(addMonths(currentDate, 1));
+        break;
+    }
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
   if (showForm) {
     return (
       <CalendarForm
@@ -493,16 +558,22 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
         
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+            onClick={navigatePrevious}
             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
           >
             <ChevronLeftIcon className="w-5 h-5" />
+          </button>
+          <button
+            onClick={goToToday}
+            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            Hoje
           </button>
           <h2 className="text-lg font-semibold text-gray-900 capitalize">
             {formatMonthYear(currentDate)}
           </h2>
           <button
-            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+            onClick={navigateNext}
             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
           >
             <ChevronRightIcon className="w-5 h-5" />
@@ -511,53 +582,276 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {/* Days of Week Header */}
-        <div className="grid grid-cols-7 bg-gray-50">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-            <div key={day} className="p-3 text-center text-sm font-medium text-gray-500">
-              {day}
-            </div>
-          ))}
-        </div>
+      {viewMode === 'month' && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Days of Week Header */}
+          <div className="grid grid-cols-7 bg-gray-50">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+              <div key={day} className="p-3 text-center text-sm font-medium text-gray-500">
+                {day}
+              </div>
+            ))}
+          </div>
 
-        {/* Calendar Days */}
-        <div className="grid grid-cols-7 divide-x divide-y divide-gray-200">
-          {calendarDays.map(day => {
-            const dayEvents = getEventsForDate(day);
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const isToday = isSameDay(day, new Date());
+          {/* Calendar Days */}
+          <div className="grid grid-cols-7 divide-x divide-y divide-gray-200">
+            {calendarDays.map(day => {
+              const dayEvents = getEventsForDate(day);
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isToday = isSameDay(day, new Date());
 
-            return (
-              <div
-                key={day.toISOString()}
-                className={`min-h-32 p-2 group ${
-                  isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                } hover:bg-gray-50 transition-colors`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isToday
-                        ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
-                        : isCurrentMonth
-                        ? 'text-gray-900'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {format(day, 'd')}
-                  </span>
-                  <button
-                    onClick={() => handleNewEvent(day)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-all"
-                    title="Adicionar evento"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                  </button>
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`min-h-32 p-2 group ${
+                    isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                  } hover:bg-gray-50 transition-colors`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`text-sm font-medium ${
+                        isToday
+                          ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                          : isCurrentMonth
+                          ? 'text-gray-900'
+                          : 'text-gray-400'
+                      }`}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                    <button
+                      onClick={() => handleNewEvent(day)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-all"
+                      title="Adicionar evento"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    {dayEvents.slice(0, 3).map(event => {
+                      const eventConfig = EVENT_TYPES[event.type] || EVENT_TYPES['Outro'];
+                      const IconComponent = eventConfig.icon;
+                      const priorityClass = event.priority ? PRIORITY_COLORS[event.priority] : '';
+                      
+                      return (
+                        <div
+                          key={event.id}
+                          className={`text-xs p-2 rounded border cursor-pointer group ${eventConfig.color} ${eventConfig.hoverColor} ${priorityClass}`}
+                          title={`${event.title} - ${event.time}`}
+                          onClick={() => handleViewEvent(event)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-1 flex-1 min-w-0">
+                              <IconComponent className={`w-3 h-3 ${eventConfig.iconColor} flex-shrink-0`} />
+                              <span className="truncate font-medium">{event.title}</span>
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewEvent(event);
+                                }}
+                                className={`${eventConfig.iconColor} hover:opacity-75`}
+                              >
+                                <EyeIcon className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditEvent(event);
+                                }}
+                                className={`${eventConfig.iconColor} hover:opacity-75`}
+                              >
+                                <PencilIcon className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEvent(event.id);
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <TrashIcon className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {event.time}
+                            {event.client && (
+                              <span className="ml-1">• {event.client}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {dayEvents.length > 3 && (
+                      <div className="text-xs text-gray-500 text-center">
+                        +{dayEvents.length - 3} mais
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 3).map(event => {
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'week' && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Days of Week Header */}
+          <div className="grid grid-cols-7 bg-gray-50">
+            {calendarDays.map(day => (
+              <div key={day.toISOString()} className="p-4 text-center">
+                <div className="text-sm font-medium text-gray-500">
+                  {format(day, 'EEE', { locale: ptBR })}
+                </div>
+                <div className={`text-lg font-semibold mt-1 ${
+                  isSameDay(day, new Date())
+                    ? 'bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto'
+                    : 'text-gray-900'
+                }`}>
+                  {format(day, 'd')}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Week Days */}
+          <div className="grid grid-cols-7 divide-x divide-gray-200 min-h-96">
+            {calendarDays.map(day => {
+              const dayEvents = getEventsForDate(day);
+              const isToday = isSameDay(day, new Date());
+
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`p-3 group ${
+                    isToday ? 'bg-blue-50' : 'bg-white'
+                  } hover:bg-gray-50 transition-colors`}
+                >
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={() => handleNewEvent(day)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-all"
+                      title="Adicionar evento"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {dayEvents.map(event => {
+                      const eventConfig = EVENT_TYPES[event.type] || EVENT_TYPES['Outro'];
+                      const IconComponent = eventConfig.icon;
+                      const priorityClass = event.priority ? PRIORITY_COLORS[event.priority] : '';
+                      
+                      return (
+                        <div
+                          key={event.id}
+                          className={`text-sm p-2 rounded border cursor-pointer group ${eventConfig.color} ${eventConfig.hoverColor} ${priorityClass}`}
+                          title={`${event.title} - ${event.time}`}
+                          onClick={() => handleViewEvent(event)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-1 flex-1 min-w-0">
+                              <IconComponent className={`w-3 h-3 ${eventConfig.iconColor} flex-shrink-0`} />
+                              <span className="truncate font-medium">{event.title}</span>
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewEvent(event);
+                                }}
+                                className={`${eventConfig.iconColor} hover:opacity-75`}
+                              >
+                                <EyeIcon className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditEvent(event);
+                                }}
+                                className={`${eventConfig.iconColor} hover:opacity-75`}
+                              >
+                                <PencilIcon className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEvent(event.id);
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <TrashIcon className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {event.time}
+                            {event.client && (
+                              <span className="ml-1">• {event.client}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'day' && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Day Header */}
+          <div className="bg-gray-50 p-6 text-center border-b">
+            <div className="text-sm font-medium text-gray-500 mb-1">
+              {format(currentDate, 'EEEE', { locale: ptBR })}
+            </div>
+            <div className={`text-2xl font-bold ${
+              isSameDay(currentDate, new Date())
+                ? 'text-blue-600'
+                : 'text-gray-900'
+            }`}>
+              {format(currentDate, 'd \'de\' MMMM', { locale: ptBR })}
+            </div>
+            <button
+              onClick={() => handleNewEvent(currentDate)}
+              className="mt-3 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Novo Evento
+            </button>
+          </div>
+
+          {/* Day Events */}
+          <div className="p-6">
+            {(() => {
+              const dayEvents = getEventsForDate(currentDate).sort((a, b) => a.time.localeCompare(b.time));
+              
+              if (dayEvents.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum evento agendado para este dia</p>
+                    <button
+                      onClick={() => handleNewEvent(currentDate)}
+                      className="mt-4 text-blue-600 hover:text-blue-800"
+                    >
+                      Adicionar primeiro evento
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {dayEvents.map(event => {
                     const eventConfig = EVENT_TYPES[event.type] || EVENT_TYPES['Outro'];
                     const IconComponent = eventConfig.icon;
                     const priorityClass = event.priority ? PRIORITY_COLORS[event.priority] : '';
@@ -565,65 +859,88 @@ export default function Calendar({ quickActionType, onClearQuickAction }: Calend
                     return (
                       <div
                         key={event.id}
-                        className={`text-xs p-2 rounded border cursor-pointer group ${eventConfig.color} ${eventConfig.hoverColor} ${priorityClass}`}
-                        title={`${event.title} - ${event.time}`}
+                        className={`p-4 rounded-lg border-2 cursor-pointer group ${eventConfig.color} ${eventConfig.hoverColor} ${priorityClass}`}
                         onClick={() => handleViewEvent(event)}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-1 flex-1 min-w-0">
-                            <IconComponent className={`w-3 h-3 ${eventConfig.iconColor} flex-shrink-0`} />
-                            <span className="truncate font-medium">{event.title}</span>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3 flex-1">
+                            <IconComponent className={`w-6 h-6 ${eventConfig.iconColor} flex-shrink-0 mt-1`} />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                {event.title}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
+                                <span className="font-medium">{event.time}</span>
+                                {event.client && (
+                                  <span>Cliente: {event.client}</span>
+                                )}
+                                {event.location && (
+                                  <span>Local: {event.location}</span>
+                                )}
+                              </div>
+                              {event.notes && (
+                                <p className="text-sm text-gray-700 mt-2">
+                                  {event.notes}
+                                </p>
+                              )}
+                              <div className="flex items-center space-x-2 mt-3">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  event.status === 'Concluído'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {event.status}
+                                </span>
+                                {event.priority && (
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${PRIORITY_COLORS[event.priority]}`}>
+                                    {event.priority}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
+                          <div className="opacity-0 group-hover:opacity-100 flex space-x-2 ml-4">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleViewEvent(event);
                               }}
-                              className={`${eventConfig.iconColor} hover:opacity-75`}
+                              className={`p-2 ${eventConfig.iconColor} hover:opacity-75 rounded-lg hover:bg-white`}
+                              title="Visualizar"
                             >
-                              <EyeIcon className="w-3 h-3" />
+                              <EyeIcon className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditEvent(event);
                               }}
-                              className={`${eventConfig.iconColor} hover:opacity-75`}
+                              className={`p-2 ${eventConfig.iconColor} hover:opacity-75 rounded-lg hover:bg-white`}
+                              title="Editar"
                             >
-                              <PencilIcon className="w-3 h-3" />
+                              <PencilIcon className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteEvent(event.id);
                               }}
-                              className="text-red-500 hover:text-red-700"
+                              className="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-white"
+                              title="Excluir"
                             >
-                              <TrashIcon className="w-3 h-3" />
+                              <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
-                        </div>
-                        <div className="text-xs opacity-75">
-                          {event.time}
-                          {event.client && (
-                            <span className="ml-1">• {event.client}</span>
-                          )}
                         </div>
                       </div>
                     );
                   })}
-                  {dayEvents.length > 3 && (
-                    <div className="text-xs text-gray-500 text-center">
-                      +{dayEvents.length - 3} mais
-                    </div>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
