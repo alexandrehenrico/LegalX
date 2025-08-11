@@ -310,7 +310,7 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                     <option value="Material">Material</option>
                     <option value="Outro">Energia</option>
                     <option value="Outro">Salário</option>
-                    <option value="Outro">Alimentação</option>
+                    <option value="Outro">Alimentação/Bebidas</option>
                     <option value="Outro">Outro</option>
                   </select>
                   {errors.category && (
