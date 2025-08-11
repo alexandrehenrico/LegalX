@@ -20,11 +20,13 @@ export interface CalendarEvent {
   date: string;
   time: string;
   client?: string;
-  type: 'Audiência' | 'Reunião' | 'Prazo' | 'Outro';
+  type: 'Audiência' | 'Reunião com Cliente' | 'Prazo Processual' | 'Prazo Interno' | 'Ligação Importante' | 'Outro';
   location?: string;
   notes?: string;
   status: 'Pendente' | 'Concluído';
   lawyers: string[];
+  processNumber?: string;
+  priority?: 'Baixa' | 'Média' | 'Alta' | 'Urgente';
 }
 
 export interface Revenue {

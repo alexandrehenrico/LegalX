@@ -1,6 +1,18 @@
 import React from 'react';
 import { CalendarEvent } from '../../types';
-import { ArrowLeftIcon, PencilIcon, CheckCircleIcon, ClockIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { 
+  ArrowLeftIcon, 
+  PencilIcon, 
+  CheckCircleIcon, 
+  ClockIcon, 
+  TrashIcon,
+  ScaleIcon,
+  UserGroupIcon,
+  ExclamationTriangleIcon,
+  PhoneIcon,
+  DocumentTextIcon,
+  FolderIcon
+} from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { localStorageService } from '../../services/localStorage';
@@ -12,6 +24,47 @@ interface EventViewProps {
   onDelete: () => void;
   onUpdate?: (event: CalendarEvent) => void;
 }
+
+// Configuração de tipos de evento com cores e ícones
+const EVENT_TYPES = {
+  'Audiência': {
+    color: 'bg-red-100 text-red-800',
+    icon: ScaleIcon,
+    iconColor: 'text-red-600'
+  },
+  'Reunião com Cliente': {
+    color: 'bg-blue-100 text-blue-800',
+    icon: UserGroupIcon,
+    iconColor: 'text-blue-600'
+  },
+  'Prazo Processual': {
+    color: 'bg-amber-100 text-amber-800',
+    icon: ExclamationTriangleIcon,
+    iconColor: 'text-amber-600'
+  },
+  'Prazo Interno': {
+    color: 'bg-orange-100 text-orange-800',
+    icon: ClockIcon,
+    iconColor: 'text-orange-600'
+  },
+  'Ligação Importante': {
+    color: 'bg-green-100 text-green-800',
+    icon: PhoneIcon,
+    iconColor: 'text-green-600'
+  },
+  'Outro': {
+    color: 'bg-gray-100 text-gray-800',
+    icon: DocumentTextIcon,
+    iconColor: 'text-gray-600'
+  }
+};
+
+const PRIORITY_COLORS = {
+  'Baixa': 'bg-green-100 text-green-800',
+  'Média': 'bg-yellow-100 text-yellow-800',
+  'Alta': 'bg-orange-100 text-orange-800',
+  'Urgente': 'bg-red-100 text-red-800'
+};
 
 export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }: EventViewProps) {
   const formatDate = (dateString: string) => {
@@ -56,18 +109,8 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
     }
   };
 
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case 'Audiência':
-        return 'bg-red-100 text-red-800';
-      case 'Reunião':
-        return 'bg-blue-100 text-blue-800';
-      case 'Prazo':
-        return 'bg-amber-100 text-amber-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const eventConfig = EVENT_TYPES[event.type] || EVENT_TYPES['Outro'];
+  const IconComponent = eventConfig.icon;
 
   return (
     <div className="p-6">
@@ -82,7 +125,10 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
             Voltar
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+            <div className="flex items-center space-x-3">
+              <IconComponent className={`w-8 h-8 ${eventConfig.iconColor}`} />
+              <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+            </div>
             <p className="text-gray-600">Detalhes do compromisso</p>
           </div>
         </div>
@@ -144,10 +190,22 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
               <label className="block text-sm font-medium text-gray-500 mb-1">
                 Tipo
               </label>
-              <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getEventTypeColor(event.type)}`}>
+              <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${eventConfig.color}`}>
+                <IconComponent className={`w-4 h-4 mr-2 ${eventConfig.iconColor}`} />
                 {event.type}
               </span>
             </div>
+
+            {event.priority && (
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Prioridade
+                </label>
+                <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${PRIORITY_COLORS[event.priority]}`}>
+                  {event.priority}
+                </span>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -170,6 +228,18 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
                   Cliente
                 </label>
                 <p className="text-gray-900">{event.client}</p>
+              </div>
+            )}
+
+            {event.processNumber && (
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Número do Processo
+                </label>
+                <div className="flex items-center">
+                  <FolderIcon className="w-4 h-4 text-gray-400 mr-2" />
+                  <p className="text-gray-900 font-mono">{event.processNumber}</p>
+                </div>
               </div>
             )}
 

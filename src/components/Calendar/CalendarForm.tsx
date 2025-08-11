@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { CalendarEvent, Lawyer } from '../../types';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { localStorageService } from '../../services/localStorage';
 import { format } from 'date-fns';
 
@@ -15,7 +15,9 @@ const schema = yup.object({
   type: yup.string().required('Tipo é obrigatório'),
   location: yup.string(),
   notes: yup.string(),
-  lawyers: yup.array().min(1, 'Pelo menos um advogado é obrigatório')
+  lawyers: yup.array().min(1, 'Pelo menos um advogado é obrigatório'),
+  processNumber: yup.string(),
+  priority: yup.string()
 });
 
 interface CalendarFormProps {
@@ -28,24 +30,33 @@ interface CalendarFormProps {
 export default function CalendarForm({ event, selectedDate, onBack, onSave }: CalendarFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
   const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>(event?.lawyers || []);
+  const [processes, setProcesses] = React.useState<any[]>([]);
   
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    watch
   } = useForm<Partial<CalendarEvent>>({
     resolver: yupResolver(schema),
     defaultValues: event || {
-      type: 'Reunião',
-      status: 'Pendente'
+      type: 'Reunião com Cliente',
+      status: 'Pendente',
+      priority: 'Média'
     }
   });
+
+  const watchedProcessNumber = watch('processNumber');
 
   useEffect(() => {
     // Carregar advogados ativos
     const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
     setLawyers(loadedLawyers);
+    
+    // Carregar processos para sugestões
+    const loadedProcesses = localStorageService.getProcesses();
+    setProcesses(loadedProcesses);
     
     if (event) {
       Object.keys(event).forEach((key) => {
@@ -57,6 +68,20 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
     }
   }, [event, selectedDate, setValue]);
 
+  // Auto-preencher cliente baseado no processo selecionado
+  useEffect(() => {
+    if (watchedProcessNumber) {
+      const selectedProcess = processes.find(p => p.processNumber === watchedProcessNumber);
+      if (selectedProcess) {
+        setValue('client', selectedProcess.client);
+        // Auto-selecionar advogados responsáveis do processo
+        if (selectedProcess.responsibleLawyers) {
+          setSelectedLawyers(selectedProcess.responsibleLawyers);
+        }
+      }
+    }
+  }, [watchedProcessNumber, processes, setValue]);
+
   const handleLawyerToggle = (lawyerName: string) => {
     setSelectedLawyers(prev => {
       if (prev.includes(lawyerName)) {
@@ -66,6 +91,7 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
       }
     });
   };
+
   const onSubmit = (data: Partial<CalendarEvent>) => {
     const eventData: CalendarEvent = {
       id: event?.id || Date.now().toString(),
@@ -147,6 +173,23 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Número do Processo
+              </label>
+              <select
+                {...register('processNumber')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione um processo (opcional)</option>
+                {processes.map((process) => (
+                  <option key={process.id} value={process.processNumber}>
+                    {process.processNumber} - {process.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cliente
               </label>
               <input
@@ -166,13 +209,30 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Audiência">Audiência</option>
-                <option value="Reunião">Reunião</option>
-                <option value="Prazo">Prazo</option>
+                <option value="Reunião com Cliente">Reunião com Cliente</option>
+                <option value="Prazo Processual">Prazo Processual</option>
+                <option value="Prazo Interno">Prazo Interno</option>
+                <option value="Ligação Importante">Ligação Importante</option>
                 <option value="Outro">Outro</option>
               </select>
               {errors.type && (
                 <p className="text-red-500 text-sm mt-1">{errors.type.message}</p>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Prioridade
+              </label>
+              <select
+                {...register('priority')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Baixa">Baixa</option>
+                <option value="Média">Média</option>
+                <option value="Alta">Alta</option>
+                <option value="Urgente">Urgente</option>
+              </select>
             </div>
 
             <div>
