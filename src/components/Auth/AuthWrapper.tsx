@@ -1,48 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { authService } from '../../services/authService';
-import { User } from '../../types/auth';
-import LoginForm from './LoginForm';
-import RegisterForm from './RegisterForm';
+import { useState, useEffect } from "react"
+import { authService } from "../../services/authService"
+import type { User } from "../../types/auth"
+import LoginForm from "./LoginForm"
+import RegisterForm from "./RegisterForm"
 
 interface AuthWrapperProps {
-  children: (user: User) => React.ReactNode;
+  children: (user: User) => React.ReactNode
 }
 
 export default function AuthWrapper({ children }: AuthWrapperProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [authMode, setAuthMode] = useState<"login" | "register">("login")
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar se usuário já está autenticado
-    const checkAuth = () => {
-      try {
-        if (authService.isAuthenticated()) {
-          const user = authService.getCurrentUser();
-          if (user) {
-            setCurrentUser(user);
-            setIsAuthenticated(true);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const unsubscribe = authService.onAuthStateChanged((user) => {
+      setCurrentUser(user)
+      setIsAuthenticated(user !== null)
+      setIsLoading(false)
+    })
 
-    checkAuth();
-  }, []);
+    return () => unsubscribe()
+  }, [])
 
   const handleAuthSuccess = (user: User) => {
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-  };
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+  }
 
   const handleSwitchMode = () => {
-    setAuthMode(authMode === 'login' ? 'register' : 'login');
-  };
+    setAuthMode(authMode === "login" ? "register" : "login")
+  }
 
   if (isLoading) {
     return (
@@ -52,22 +41,16 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
           <p className="text-white">Carregando...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!isAuthenticated || !currentUser) {
-    return authMode === 'login' ? (
-      <LoginForm 
-        onSuccess={handleAuthSuccess}
-        onSwitchToRegister={handleSwitchMode}
-      />
+    return authMode === "login" ? (
+      <LoginForm onSuccess={handleAuthSuccess} onSwitchToRegister={handleSwitchMode} />
     ) : (
-      <RegisterForm 
-        onSuccess={handleAuthSuccess}
-        onSwitchToLogin={handleSwitchMode}
-      />
-    );
+      <RegisterForm onSuccess={handleAuthSuccess} onSwitchToLogin={handleSwitchMode} />
+    )
   }
 
-  return <>{children(currentUser)}</>;
+  return <>{children(currentUser)}</>
 }
