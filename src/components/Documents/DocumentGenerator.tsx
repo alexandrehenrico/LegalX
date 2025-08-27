@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PowerOfAttorneyForm from './PowerOfAttorneyForm';
 import ReceiptForm from './ReceiptForm';
 import DocumentViewer from './DocumentViewer';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 import { Document } from '../../types';
 import { DocumentTextIcon, ReceiptPercentIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
@@ -17,6 +17,7 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
   const [activeDocument, setActiveDocument] = useState<'power-of-attorney' | 'receipt' | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (quickActionType === 'power-of-attorney') {
@@ -32,8 +33,16 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
     loadDocuments();
   }, []);
 
-  const loadDocuments = () => {
-    setDocuments(localStorageService.getDocuments());
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const loadedDocuments = await firestoreService.getDocuments();
+      setDocuments(loadedDocuments);
+    } catch (error) {
+      console.error('Erro ao carregar documentos:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewDocument = (document: Document) => {
@@ -43,6 +52,7 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
   const handleBackFromViewer = () => {
     setViewingDocument(null);
   };
+
   if (activeDocument === 'power-of-attorney') {
     return (
       <PowerOfAttorneyForm
@@ -69,6 +79,7 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
       />
     );
   }
+  
   return (
     <div className="p-6">
       {/* Header */}
@@ -130,7 +141,11 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
       <div className="mt-12">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Documentos Recentes</h2>
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          {documents.length === 0 ? (
+          {loading ? (
+            <div className="p-6">
+              <p className="text-gray-500 text-center">Carregando documentos...</p>
+            </div>
+          ) : documents.length === 0 ? (
             <div className="p-6">
               <p className="text-gray-500 text-center">
                 Nenhum documento gerado ainda
@@ -158,7 +173,7 @@ export default function DocumentGenerator({ quickActionType, onClearQuickAction 
                       </span>
                       <button
                         onClick={() => handleViewDocument(document)}
-                        className="flex items-center px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="flex items-center px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors ml-2"
                         title="Visualizar documento"
                       >
                         <EyeIcon className="w-3 h-3 mr-1" />

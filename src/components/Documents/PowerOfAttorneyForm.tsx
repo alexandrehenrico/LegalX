@@ -5,7 +5,7 @@ import * as yup from 'yup';
 import { Lawyer } from '../../types';
 import { ArrowLeftIcon, DocumentArrowDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const schema = yup.object({
   clientName: yup.string().required('Nome do cliente é obrigatório'),
@@ -39,6 +39,7 @@ interface PowerOfAttorneyData {
 export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
   const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(false);
   
   const {
     register,
@@ -54,8 +55,17 @@ export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyF
 
   React.useEffect(() => {
     // Carregar advogados ativos
-    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
-    setLawyers(loadedLawyers);
+    const loadLawyers = async () => {
+      try {
+        const loadedLawyers = await firestoreService.getLawyers();
+        const activeLawyers = loadedLawyers.filter(l => l.status === 'Ativo');
+        setLawyers(activeLawyers);
+      } catch (error) {
+        console.error('Erro ao carregar advogados:', error);
+      }
+    };
+    
+    loadLawyers();
   }, []);
 
   const handleLawyerToggle = (lawyerName: string) => {
@@ -67,6 +77,7 @@ export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyF
       }
     });
   };
+
   const generatePDF = (data: PowerOfAttorneyData) => {
     const doc = new jsPDF();
     
@@ -121,8 +132,8 @@ export default function PowerOfAttorneyForm({ onBack, onSave }: PowerOfAttorneyF
       const lawyer = lawyers.find(l => l.fullName === name);
       return lawyer ? `${name} (OAB ${lawyer.oab})` : name;
     }).join(', ');
+
     const content = `
-    // Conteúdo principal com formatação melhorada
 Pelo presente instrumento particular de procuração, eu, ${data.clientName}, 
 ${data.clientCpf.includes('.') ? 'CPF' : 'CPF'} nº ${data.clientCpf}, RG nº ${data.clientRg}, 
 residente e domiciliado em ${data.clientAddress}, 
@@ -181,15 +192,17 @@ Outorgante
     doc.save(`procuracao_${data.clientName.replace(/\s+/g, '_').toLowerCase()}.pdf`);
   };
 
-  const onSubmit = (data: PowerOfAttorneyData) => {
+  const onSubmit = async (data: PowerOfAttorneyData) => {
     if (selectedLawyers.length === 0) {
       alert('Selecione pelo menos um advogado.');
       return;
     }
     
     try {
-      // Salvar documento no localStorage
-      const savedDocument = localStorageService.saveDocument({
+      setLoading(true);
+      
+      // Salvar documento no Firestore
+      const savedDocument = await firestoreService.saveDocument({
         type: 'Procuração',
         client: data.clientName,
         data: {
@@ -205,14 +218,17 @@ Outorgante
       
       // Chamar callback para atualizar lista
       if (onSave) {
-        onSave();
+        await onSave();
       }
+      
+      // Gerar PDF
+      generatePDF({ ...data, lawyers: selectedLawyers });
     } catch (error) {
       console.error('Erro ao salvar procuração:', error);
       alert('Erro ao salvar procuração no sistema. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    
-    generatePDF({ ...data, lawyers: selectedLawyers });
   };
 
   return (
@@ -222,6 +238,7 @@ Outorgante
         <button
           onClick={onBack}
           className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+          disabled={loading}
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Voltar
@@ -246,7 +263,8 @@ Outorgante
                 <input
                   {...register('clientName')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Nome completo do cliente"
                 />
                 {errors.clientName && (
@@ -261,7 +279,8 @@ Outorgante
                 <input
                   {...register('clientCpf')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="000.000.000-00"
                 />
                 {errors.clientCpf && (
@@ -276,7 +295,8 @@ Outorgante
                 <input
                   {...register('clientRg')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="00.000.000-0"
                 />
                 {errors.clientRg && (
@@ -291,7 +311,8 @@ Outorgante
                 <input
                   {...register('clientAddress')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Rua, número, bairro, cidade, estado"
                 />
                 {errors.clientAddress && (
@@ -315,9 +336,10 @@ Outorgante
                       <label key={lawyer.id} className="flex items-center">
                         <input
                           type="checkbox"
+                          disabled={loading}
                           checked={selectedLawyers.includes(lawyer.fullName)}
                           onChange={() => handleLawyerToggle(lawyer.fullName)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                         />
                         <span className="text-sm text-gray-700">
                           {lawyer.fullName} - OAB: {lawyer.oab}
@@ -341,8 +363,9 @@ Outorgante
                         {lawyer}
                         <button
                           type="button"
+                          disabled={loading}
                           onClick={() => handleLawyerToggle(lawyer)}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
+                          className="ml-1 text-blue-600 hover:text-blue-800 disabled:opacity-50"
                         >
                           <XMarkIcon className="w-3 h-3" />
                         </button>
@@ -372,7 +395,8 @@ Outorgante
                 </label>
                 <select
                   {...register('type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   <option value="Ad Judicia">Ad Judicia</option>
                   <option value="Para fins específicos">Para fins específicos</option>
@@ -389,7 +413,8 @@ Outorgante
                 <input
                   {...register('location')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="São Paulo - SP"
                 />
                 {errors.location && (
@@ -404,7 +429,8 @@ Outorgante
                 <input
                   {...register('date')}
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
                 {errors.date && (
                   <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>
@@ -418,7 +444,8 @@ Outorgante
                 <textarea
                   {...register('object')}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Descreva o objeto/finalidade da procuração..."
                 />
                 {errors.object && (
@@ -433,16 +460,18 @@ Outorgante
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={loading}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-              Gerar Procuração PDF
+              {loading ? 'Processando...' : 'Gerar Procuração PDF'}
             </button>
           </div>
         </div>

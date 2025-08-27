@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Lawyer } from '../../types';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const schema = yup.object({
   fullName: yup.string().required('Nome completo é obrigatório'),
@@ -27,6 +27,7 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
   const [specialties, setSpecialties] = useState<string[]>(lawyer?.specialties || []);
   const [newSpecialty, setNewSpecialty] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string>(lawyer?.photo || '');
+  const [loading, setLoading] = useState(false);
   
   const {
     register,
@@ -51,7 +52,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
     }
   }, [lawyer, setValue]);
 
-  const onSubmit = (data: Partial<Lawyer>) => {
+  const onSubmit = async (data: Partial<Lawyer>) => {
+    setLoading(true);
     try {
       const lawyerData = {
         ...data,
@@ -61,7 +63,7 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
 
       if (lawyer) {
         // Atualizar advogado existente
-        const updatedLawyer = localStorageService.updateLawyer(lawyer.id, lawyerData);
+        const updatedLawyer = await firestoreService.updateLawyer(lawyer.id, lawyerData);
         
         if (updatedLawyer) {
           console.log('Advogado atualizado com sucesso');
@@ -71,7 +73,7 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
         }
       } else {
         // Criar novo advogado
-        const newLawyer = localStorageService.saveLawyer(lawyerData);
+        const newLawyer = await firestoreService.saveLawyer(lawyerData);
         
         console.log('Novo advogado criado com sucesso');
         onSave(newLawyer);
@@ -79,6 +81,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
     } catch (error) {
       console.error('Erro ao salvar advogado:', error);
       alert('Erro ao salvar advogado. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,6 +124,7 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
         <button
           onClick={onBack}
           className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+          disabled={loading}
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Voltar
@@ -161,10 +166,11 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                   onChange={handlePhotoChange}
                   className="hidden"
                   id="photo-upload"
+                  disabled={loading}
                 />
                 <label
                   htmlFor="photo-upload"
-                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   <PhotoIcon className="w-4 h-4 mr-2" />
                   Escolher Foto
@@ -187,7 +193,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 <input
                   {...register('fullName')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Nome completo do advogado"
                 />
                 {errors.fullName && (
@@ -203,10 +210,11 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                   {...register('cpf')}
                   type="text"
                   maxLength={14}
+                  disabled={loading}
                   onChange={(e) => {
                     e.target.value = formatCpf(e.target.value);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="000.000.000-00"
                 />
                 {errors.cpf && (
@@ -221,7 +229,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 <input
                   {...register('oab')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="123456/SP"
                 />
                 {errors.oab && (
@@ -239,7 +248,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                   min="0"
                   max="100"
                   step="0.1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="10.0"
                 />
                 {errors.commission && (
@@ -254,7 +264,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 <input
                   {...register('email')}
                   type="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="email@exemplo.com"
                 />
                 {errors.email && (
@@ -269,7 +280,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 <input
                   {...register('phone')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="(11) 99999-9999"
                 />
               </div>
@@ -281,7 +293,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 <input
                   {...register('address')}
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Endereço completo"
                 />
               </div>
@@ -292,7 +305,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 </label>
                 <select
                   {...register('status')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
@@ -316,13 +330,15 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                 value={newSpecialty}
                 onChange={(e) => setNewSpecialty(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty())}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 placeholder="Ex: Direito Trabalhista"
               />
               <button
                 type="button"
                 onClick={addSpecialty}
-                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={loading}
+                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Adicionar
@@ -337,7 +353,8 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
                     <button
                       type="button"
                       onClick={() => removeSpecialty(index)}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
+                      disabled={loading}
+                      className="ml-2 text-blue-600 hover:text-blue-800 disabled:opacity-50"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -354,15 +371,24 @@ export default function LawyerForm({ lawyer, onBack, onSave }: LawyerFormProps) 
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={loading}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
             >
-              {lawyer ? 'Atualizar' : 'Salvar'} Advogado
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Salvando...
+                </>
+              ) : (
+                `${lawyer ? 'Atualizar' : 'Salvar'} Advogado`
+              )}
             </button>
           </div>
         </div>

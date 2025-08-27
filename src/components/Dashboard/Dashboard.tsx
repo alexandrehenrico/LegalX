@@ -10,7 +10,7 @@ import FinancialCard from './FinancialCard';
 import StatsCard from './StatsCard';
 import CashFlowChart from './CashFlowChart';
 import RecentItems from './RecentItems';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 import { Process, CalendarEvent, Document } from '../../types';
 import { authService } from '../../services/authService';
 
@@ -24,35 +24,78 @@ export default function Dashboard() {
     balance: 0,
     monthlyData: []
   });
+  const [loading, setLoading] = useState(true);
 
   // Obter usuário atual para exibir informações personalizadas
   const currentUser = authService.getCurrentUser();
 
   useEffect(() => {
-    // Carregar dados do localStorage
-    const loadData = () => {
-      try {
-        setProcesses(localStorageService.getProcesses());
-        setEvents(localStorageService.getEvents());
-        setDocuments(localStorageService.getDocuments());
-        setFinancialSummary(localStorageService.getFinancialSummary());
-        console.log('Dados do dashboard carregados:', {
-          processes: localStorageService.getProcesses().length,
-          events: localStorageService.getEvents().length,
-          documents: localStorageService.getDocuments().length
-        });
-      } catch (error) {
-        console.error('Erro ao carregar dados do dashboard:', error);
-      }
-    };
-
     loadData();
+  }, []);
 
-    // Atualizar dados a cada 30 segundos para refletir mudanças
-    const interval = setInterval(loadData, 30000);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Carregar todos os dados em paralelo
+      const [
+        processesData,
+        eventsData,
+        documentsData,
+        financialData
+      ] = await Promise.all([
+        firestoreService.getProcesses(),
+        firestoreService.getEvents(),
+        firestoreService.getDocuments(),
+        firestoreService.getFinancialSummary()
+      ]);
+      
+      setProcesses(processesData);
+      setEvents(eventsData);
+      setDocuments(documentsData);
+      setFinancialSummary(financialData);
+      
+      console.log('Dados do dashboard carregados do Firestore:', {
+        processes: processesData.length,
+        events: eventsData.length,
+        documents: documentsData.length,
+        financialSummary: financialData
+      });
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error);
+      // Em caso de erro, manter valores padrão
+      setProcesses([]);
+      setEvents([]);
+      setDocuments([]);
+      setFinancialSummary({
+        totalRevenue: 0,
+        totalExpenses: 0,
+        balance: 0,
+        monthlyData: []
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Recarregar dados periodicamente (a cada 2 minutos)
+  useEffect(() => {
+    const interval = setInterval(loadData, 120000);
     return () => clearInterval(interval);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const activeProcesses = processes.filter(p => p.status === 'Em andamento').length;
   const completedProcesses = processes.filter(p => p.status === 'Concluído').length;

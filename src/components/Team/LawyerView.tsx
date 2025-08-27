@@ -3,7 +3,7 @@ import { Lawyer } from '../../types';
 import { ArrowLeftIcon, PencilIcon, UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 interface LawyerViewProps {
   lawyer: Lawyer;
@@ -21,13 +21,13 @@ export default function LawyerView({ lawyer, onBack, onEdit, onUpdate }: LawyerV
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     const newStatus = lawyer.status === 'Ativo' ? 'Inativo' : 'Ativo';
     const action = newStatus === 'Ativo' ? 'ativar' : 'inativar';
     
     if (confirm(`Tem certeza que deseja ${action} este advogado?`)) {
       try {
-        const updatedLawyer = localStorageService.updateLawyer(lawyer.id, {
+        const updatedLawyer = await firestoreService.updateLawyer(lawyer.id, {
           status: newStatus
         });
         

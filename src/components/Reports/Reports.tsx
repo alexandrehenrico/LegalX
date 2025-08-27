@@ -20,7 +20,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 import { Process, CalendarEvent } from '../../types';
 import jsPDF from 'jspdf';
 
@@ -40,11 +40,13 @@ export default function Reports() {
     loadReportData();
   }, []);
 
-  const loadReportData = () => {
+  const loadReportData = async () => {
     try {
-      const loadedProcesses = localStorageService.getProcesses();
-      const loadedEvents = localStorageService.getEvents();
-      const loadedFinancialSummary = localStorageService.getFinancialSummary();
+      const [loadedProcesses, loadedEvents, loadedFinancialSummary] = await Promise.all([
+        firestoreService.getProcesses(),
+        firestoreService.getEvents(),
+        firestoreService.getFinancialSummary()
+      ]);
       
       setProcesses(loadedProcesses);
       setEvents(loadedEvents);

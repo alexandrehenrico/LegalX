@@ -5,7 +5,7 @@ import * as yup from 'yup';
 import { Lawyer } from '../../types';
 import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const schema = yup.object({
   clientName: yup.string().required('Nome do cliente é obrigatório'),
@@ -36,10 +36,12 @@ interface ReceiptData {
 
 export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
+  const [loading, setLoading] = React.useState(false);
   
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors }
   } = useForm<ReceiptData>({
     resolver: yupResolver(schema),
@@ -51,8 +53,17 @@ export default function ReceiptForm({ onBack, onSave }: ReceiptFormProps) {
 
   React.useEffect(() => {
     // Carregar advogados ativos
-    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
-    setLawyers(loadedLawyers);
+    const loadLawyers = async () => {
+      try {
+        const loadedLawyers = await firestoreService.getLawyers();
+        const activeLawyers = loadedLawyers.filter(l => l.status === 'Ativo');
+        setLawyers(activeLawyers);
+      } catch (error) {
+        console.error('Erro ao carregar advogados:', error);
+      }
+    };
+    
+    loadLawyers();
   }, []);
 
   const formatCurrency = (value: number) => {
@@ -218,10 +229,12 @@ CPF: ${data.lawyerCpf}
     doc.save(`recibo_${data.clientName.replace(/\s+/g, '_').toLowerCase()}.pdf`);
   };
 
-  const onSubmit = (data: ReceiptData) => {
+  const onSubmit = async (data: ReceiptData) => {
     try {
-      // Salvar documento no localStorage
-      const savedDocument = localStorageService.saveDocument({
+      setLoading(true);
+      
+      // Salvar documento no Firestore
+      const savedDocument = await firestoreService.saveDocument({
         type: 'Recibo',
         client: data.clientName,
         data: {
@@ -238,14 +251,17 @@ CPF: ${data.lawyerCpf}
       
       // Chamar callback para atualizar lista
       if (onSave) {
-        onSave();
+        await onSave();
       }
+      
+      // Gerar PDF
+      generatePDF(data);
     } catch (error) {
       console.error('Erro ao salvar recibo:', error);
       alert('Erro ao salvar recibo no sistema. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    
-    generatePDF(data);
   };
 
   return (
@@ -255,6 +271,7 @@ CPF: ${data.lawyerCpf}
         <button
           onClick={onBack}
           className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+          disabled={loading}
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Voltar
@@ -278,7 +295,8 @@ CPF: ${data.lawyerCpf}
               <input
                 {...register('clientName')}
                 type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 placeholder="Nome completo do cliente"
               />
               {errors.clientName && (
@@ -300,7 +318,8 @@ CPF: ${data.lawyerCpf}
                   type="number"
                   step="0.01"
                   min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="0.00"
                 />
                 {errors.amount && (
@@ -314,7 +333,8 @@ CPF: ${data.lawyerCpf}
                 </label>
                 <select
                   {...register('paymentMethod')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   <option value="PIX">PIX</option>
                   <option value="Dinheiro">Dinheiro</option>
@@ -335,7 +355,8 @@ CPF: ${data.lawyerCpf}
                 <textarea
                   {...register('description')}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="Ex: Honorários advocatícios referentes à consultoria jurídica"
                 />
                 {errors.description && (
@@ -355,7 +376,8 @@ CPF: ${data.lawyerCpf}
                 </label>
                 <select
                   {...register('lawyerName')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   onChange={(e) => {
                     const selectedLawyer = lawyers.find(l => l.fullName === e.target.value);
                     if (selectedLawyer) {
@@ -389,7 +411,8 @@ CPF: ${data.lawyerCpf}
                   {...register('lawyerOab')}
                   type="text"
                   readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="00000/UF"
                 />
                 {errors.lawyerOab && (
@@ -408,7 +431,8 @@ CPF: ${data.lawyerCpf}
                   {...register('lawyerCpf')}
                   type="text"
                   readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   placeholder="000.000.000-00"
                 />
                 {errors.lawyerCpf && (
@@ -426,7 +450,8 @@ CPF: ${data.lawyerCpf}
                 <input
                   {...register('date')}
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
                 {errors.date && (
                   <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>
@@ -440,16 +465,18 @@ CPF: ${data.lawyerCpf}
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={loading}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              disabled={loading}
+              className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
               <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-              Gerar Recibo PDF
+              {loading ? 'Processando...' : 'Gerar Recibo PDF'}
             </button>
           </div>
         </div>

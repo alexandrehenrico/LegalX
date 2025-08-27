@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Process, Lawyer } from '../../types';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const schema = yup.object({
   name: yup.string().required('Nome do processo é obrigatório'),
@@ -29,6 +29,8 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
   const [attachments, setAttachments] = useState<string[]>(process?.attachments || []);
   const [selectedLawyers, setSelectedLawyers] = useState<string[]>(process?.responsibleLawyers || []);
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingLawyers, setLoadingLawyers] = useState(true);
   
   const {
     register,
@@ -43,9 +45,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
   });
 
   useEffect(() => {
-    // Carregar advogados
-    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
-    setLawyers(loadedLawyers);
+    loadLawyers();
     
     if (process) {
       Object.keys(process).forEach((key) => {
@@ -56,6 +56,20 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
     }
   }, [process, setValue]);
 
+  const loadLawyers = async () => {
+    try {
+      setLoadingLawyers(true);
+      const loadedLawyers = await firestoreService.getLawyers();
+      const activeLawyers = loadedLawyers.filter(l => l.status === 'Ativo');
+      setLawyers(activeLawyers);
+    } catch (error) {
+      console.error('Erro ao carregar advogados:', error);
+      alert('Erro ao carregar lista de advogados.');
+    } finally {
+      setLoadingLawyers(false);
+    }
+  };
+
   const handleLawyerToggle = (lawyerName: string) => {
     setSelectedLawyers(prev => {
       if (prev.includes(lawyerName)) {
@@ -65,11 +79,16 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
       }
     });
   };
-  const onSubmit = (data: Partial<Process>) => {
+
+  const onSubmit = async (data: Partial<Process>) => {
+    if (loading) return;
+    
     try {
+      setLoading(true);
+      
       if (process) {
         // Atualizar processo existente
-        const updatedProcess = localStorageService.updateProcess(process.id, {
+        const updatedProcess = await firestoreService.updateProcess(process.id, {
           ...data,
           attachments,
           responsibleLawyers: selectedLawyers
@@ -83,7 +102,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
         }
       } else {
         // Criar novo processo
-        const newProcess = localStorageService.saveProcess({
+        const newProcess = await firestoreService.saveProcess({
           ...data,
           attachments,
           responsibleLawyers: selectedLawyers
@@ -95,6 +114,8 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
     } catch (error) {
       console.error('Erro ao salvar processo:', error);
       alert('Erro ao salvar processo. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,6 +137,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
         <button
           onClick={onBack}
           className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+          disabled={loading}
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Voltar
@@ -146,6 +168,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: Execução Fiscal – José Santos"
+                  disabled={loading}
                 />
                 {errors.name && (
                   <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
@@ -161,6 +184,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0001234-56.2023.8.02.0001"
+                  disabled={loading}
                 />
                 {errors.processNumber && (
                   <p className="text-red-500 text-sm mt-1">{errors.processNumber.message}</p>
@@ -176,6 +200,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nome do cliente"
+                  disabled={loading}
                 />
                 {errors.client && (
                   <p className="text-red-500 text-sm mt-1">{errors.client.message}</p>
@@ -191,6 +216,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nome da parte contrária"
+                  disabled={loading}
                 />
               </div>
 
@@ -203,6 +229,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Comarca de São Paulo - 1ª Vara Cível"
+                  disabled={loading}
                 />
                 {errors.court && (
                   <p className="text-red-500 text-sm mt-1">{errors.court.message}</p>
@@ -214,7 +241,9 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   Advogados Responsáveis *
                 </label>
                 <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
-                  {lawyers.length > 0 ? (
+                  {loadingLawyers ? (
+                    <p className="text-gray-500 text-sm">Carregando advogados...</p>
+                  ) : lawyers.length > 0 ? (
                     <div className="space-y-2">
                       {lawyers.map((lawyer) => (
                         <label key={lawyer.id} className="flex items-center">
@@ -223,6 +252,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                             checked={selectedLawyers.includes(lawyer.fullName)}
                             onChange={() => handleLawyerToggle(lawyer.fullName)}
                             className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            disabled={loading}
                           />
                           <span className="text-sm text-gray-700">
                             {lawyer.fullName} - OAB: {lawyer.oab}
@@ -248,6 +278,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                             type="button"
                             onClick={() => handleLawyerToggle(lawyer)}
                             className="ml-1 text-blue-600 hover:text-blue-800"
+                            disabled={loading}
                           >
                             <XMarkIcon className="w-3 h-3" />
                           </button>
@@ -259,7 +290,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                 {selectedLawyers.length === 0 && (
                   <p className="text-red-500 text-sm mt-1">Pelo menos um advogado responsável é obrigatório</p>
                 )}
-                {lawyers.length === 0 && (
+                {lawyers.length === 0 && !loadingLawyers && (
                   <p className="text-amber-600 text-sm mt-1">
                     Nenhum advogado ativo encontrado. Cadastre advogados na aba "Advogados".
                   </p>
@@ -274,6 +305,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   {...register('startDate')}
                   type="date"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
                 />
                 {errors.startDate && (
                   <p className="text-red-500 text-sm mt-1">{errors.startDate.message}</p>
@@ -287,6 +319,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                 <select
                   {...register('status')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
                 >
                   <option value="Em andamento">Em andamento</option>
                   <option value="Concluído">Concluído</option>
@@ -311,6 +344,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Descreva os detalhes principais do caso..."
+                  disabled={loading}
                 />
                 {errors.description && (
                   <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
@@ -326,6 +360,7 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Observações adicionais..."
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -338,7 +373,8 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
               <button
                 type="button"
                 onClick={addAttachment}
-                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                disabled={loading}
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Adicionar Anexo
@@ -353,7 +389,8 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
                     <button
                       type="button"
                       onClick={() => removeAttachment(index)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                      disabled={loading}
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -370,15 +407,17 @@ export default function ProcessForm({ process, onBack, onSave }: ProcessFormProp
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              disabled={loading}
             >
-              {process ? 'Atualizar' : 'Salvar'} Processo
+              {loading ? 'Salvando...' : (process ? 'Atualizar' : 'Salvar')} Processo
             </button>
           </div>
         </div>

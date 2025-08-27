@@ -3,7 +3,7 @@ import { Employee } from '../../types';
 import { ArrowLeftIcon, PencilIcon, BriefcaseIcon, EnvelopeIcon, PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 interface EmployeeViewProps {
   employee: Employee;
@@ -28,13 +28,13 @@ export default function EmployeeView({ employee, onBack, onEdit, onUpdate }: Emp
     }).format(value);
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     const newStatus = employee.status === 'Ativo' ? 'Inativo' : 'Ativo';
     const action = newStatus === 'Ativo' ? 'ativar' : 'inativar';
     
     if (confirm(`Tem certeza que deseja ${action} este colaborador?`)) {
       try {
-        const updatedEmployee = localStorageService.updateEmployee(employee.id, {
+        const updatedEmployee = await firestoreService.updateEmployee(employee.id, {
           status: newStatus
         });
         

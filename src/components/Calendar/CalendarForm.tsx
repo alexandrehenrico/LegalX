@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { CalendarEvent, Lawyer } from '../../types';
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 import { format } from 'date-fns';
 
 const schema = yup.object({
@@ -31,6 +31,7 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
   const [lawyers, setLawyers] = React.useState<Lawyer[]>([]);
   const [selectedLawyers, setSelectedLawyers] = React.useState<string[]>(event?.lawyers || []);
   const [processes, setProcesses] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
   
   const {
     register,
@@ -50,14 +51,10 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
   const watchedProcessNumber = watch('processNumber');
 
   useEffect(() => {
-    // Carregar advogados ativos
-    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
-    setLawyers(loadedLawyers);
-    
-    // Carregar processos para sugestões
-    const loadedProcesses = localStorageService.getProcesses();
-    setProcesses(loadedProcesses);
-    
+    loadData();
+  }, []);
+
+  useEffect(() => {
     if (event) {
       Object.keys(event).forEach((key) => {
         setValue(key as keyof CalendarEvent, event[key as keyof CalendarEvent]);
@@ -67,6 +64,30 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
       setValue('date', format(selectedDate, 'yyyy-MM-dd'));
     }
   }, [event, selectedDate, setValue]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Carregar advogados ativos e processos em paralelo
+      const [loadedLawyers, loadedProcesses] = await Promise.all([
+        firestoreService.getLawyers(),
+        firestoreService.getProcesses()
+      ]);
+      
+      // Filtrar apenas advogados ativos
+      const activeLawyers = loadedLawyers.filter(l => l.status === 'Ativo');
+      setLawyers(activeLawyers);
+      setProcesses(loadedProcesses);
+      
+      console.log(`${activeLawyers.length} advogados ativos carregados do Firestore`);
+      console.log(`${loadedProcesses.length} processos carregados do Firestore`);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Auto-preencher cliente baseado no processo selecionado
   useEffect(() => {
@@ -102,6 +123,19 @@ export default function CalendarForm({ event, selectedDate, onBack, onSave }: Ca
     
     onSave(eventData);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dados...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

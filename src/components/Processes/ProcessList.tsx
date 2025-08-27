@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Process } from '../../types';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 import { 
   MagnifyingGlassIcon, 
   FunnelIcon,
@@ -28,24 +28,26 @@ export default function ProcessList({ onNewProcess, onViewProcess, onEditProcess
     loadProcesses();
   }, []);
 
-  const loadProcesses = () => {
+  const loadProcesses = async () => {
     try {
-      const loadedProcesses = localStorageService.getProcesses();
+      setLoading(true);
+      const loadedProcesses = await firestoreService.getProcesses();
       setProcesses(loadedProcesses);
       console.log(`${loadedProcesses.length} processos carregados`);
     } catch (error) {
       console.error('Erro ao carregar processos:', error);
+      alert('Erro ao carregar processos. Tente recarregar a página.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteProcess = (id: string) => {
+  const handleDeleteProcess = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este processo?')) {
       try {
-        const success = localStorageService.deleteProcess(id);
+        const success = await firestoreService.deleteProcess(id);
         if (success) {
-          loadProcesses(); // Recarregar lista
+          await loadProcesses(); // Recarregar lista
         }
       } catch (error) {
         console.error('Erro ao excluir processo:', error);

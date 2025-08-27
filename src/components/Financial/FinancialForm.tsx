@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Revenue, Expense, Lawyer, Employee } from '../../types';
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const revenueSchema = yup.object({
   date: yup.string().required('Data é obrigatória'),
@@ -39,6 +39,7 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
   const [selectedMembers, setSelectedMembers] = React.useState<string[]>(
     (item as any)?.responsibleLawyers || (item as any)?.responsibleMembers || []
   );
+  const [loading, setLoading] = React.useState(true);
   const schema = type === 'revenue' ? revenueSchema : expenseSchema;
   
   const {
@@ -52,12 +53,10 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
   });
 
   useEffect(() => {
-    // Carregar advogados ativos
-    const loadedLawyers = localStorageService.getLawyers().filter(l => l.status === 'Ativo');
-    const loadedEmployees = localStorageService.getEmployees().filter(e => e.status === 'Ativo');
-    setLawyers(loadedLawyers);
-    setEmployees(loadedEmployees);
-    
+    loadTeamMembers();
+  }, []);
+
+  useEffect(() => {
     if (item) {
       Object.keys(item).forEach((key) => {
         setValue(key as any, (item as any)[key]);
@@ -67,6 +66,26 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
       setSelectedMembers(responsibleMembers);
     }
   }, [item, setValue]);
+
+  const loadTeamMembers = async () => {
+    try {
+      setLoading(true);
+      // Carregar advogados e colaboradores ativos em paralelo
+      const [loadedLawyers, loadedEmployees] = await Promise.all([
+        firestoreService.getLawyers(),
+        firestoreService.getEmployees()
+      ]);
+      
+      setLawyers(loadedLawyers.filter(l => l.status === 'Ativo'));
+      setEmployees(loadedEmployees.filter(e => e.status === 'Ativo'));
+    } catch (error) {
+      console.error('Erro ao carregar membros da equipe:', error);
+      setLawyers([]);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMemberToggle = (memberName: string) => {
     setSelectedMembers(prev => {
@@ -89,6 +108,17 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
     
     onSave(itemData, type);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="text-gray-500 mt-2">Carregando formulário...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -308,10 +338,10 @@ export default function FinancialForm({ type, item, onBack, onSave }: FinancialF
                     <option value="Aluguel">Aluguel</option>
                     <option value="Internet">Internet</option>
                     <option value="Material">Material</option>
-                    <option value="Outro">Energia</option>
-                    <option value="Outro">Salário</option>
-                    <option value="Outro">Alimentação/Bebidas</option>
-                    <option value="Outro">Evento</option>
+                    <option value="Energia">Energia</option>
+                    <option value="Salário">Salário</option>
+                    <option value="Alimentação/Bebidas">Alimentação/Bebidas</option>
+                    <option value="Evento">Evento</option>
                     <option value="Outro">Outro</option>
                   </select>
                   {errors.category && (

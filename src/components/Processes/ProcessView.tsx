@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Process } from '../../types';
 import { ArrowLeftIcon, PencilIcon, DocumentIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 interface ProcessViewProps {
   process: Process;
@@ -13,14 +13,17 @@ interface ProcessViewProps {
 }
 
 export default function ProcessView({ process, onBack, onEdit, onUpdate }: ProcessViewProps) {
+  const [loading, setLoading] = useState(false);
+
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
   };
 
-  const handleMarkAsCompleted = () => {
+  const handleMarkAsCompleted = async () => {
     if (confirm('Tem certeza que deseja marcar este processo como concluído?')) {
       try {
-        const updatedProcess = localStorageService.updateProcess(process.id, {
+        setLoading(true);
+        const updatedProcess = await firestoreService.updateProcess(process.id, {
           status: 'Concluído'
         });
         
@@ -30,6 +33,8 @@ export default function ProcessView({ process, onBack, onEdit, onUpdate }: Proce
       } catch (error) {
         console.error('Erro ao atualizar status do processo:', error);
         alert('Erro ao atualizar processo. Tente novamente.');
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -42,6 +47,7 @@ export default function ProcessView({ process, onBack, onEdit, onUpdate }: Proce
           <button
             onClick={onBack}
             className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+            disabled={loading}
           >
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Voltar
@@ -55,15 +61,17 @@ export default function ProcessView({ process, onBack, onEdit, onUpdate }: Proce
           {process.status === 'Em andamento' && (
             <button
               onClick={handleMarkAsCompleted}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              disabled={loading}
             >
               <CheckCircleIcon className="w-5 h-5 mr-2" />
-              Marcar como Concluído
+              {loading ? 'Atualizando...' : 'Marcar como Concluído'}
             </button>
           )}
           <button
             onClick={onEdit}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={loading}
           >
             <PencilIcon className="w-5 h-5 mr-2" />
             Editar

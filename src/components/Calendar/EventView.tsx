@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 interface EventViewProps {
   event: CalendarEvent;
@@ -75,10 +75,10 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
     return timeString;
   };
 
-  const handleMarkAsCompleted = () => {
+  const handleMarkAsCompleted = async () => {
     if (confirm('Tem certeza que deseja marcar este evento como concluído?')) {
       try {
-        const updatedEvent = localStorageService.updateEvent(event.id, {
+        const updatedEvent = await firestoreService.updateEvent(event.id, {
           status: 'Concluído'
         });
         
@@ -92,10 +92,10 @@ export default function EventView({ event, onBack, onEdit, onDelete, onUpdate }:
     }
   };
 
-  const handleMarkAsPending = () => {
+  const handleMarkAsPending = async () => {
     if (confirm('Tem certeza que deseja marcar este evento como pendente?')) {
       try {
-        const updatedEvent = localStorageService.updateEvent(event.id, {
+        const updatedEvent = await firestoreService.updateEvent(event.id, {
           status: 'Pendente'
         });
         

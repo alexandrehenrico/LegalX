@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Employee } from '../../types';
 import { ArrowLeftIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import { localStorageService } from '../../services/localStorage';
+import { firestoreService } from '../../services/firestoreService';
 
 const schema = yup.object({
   fullName: yup.string().required('Nome completo é obrigatório'),
@@ -25,6 +25,7 @@ interface EmployeeFormProps {
 
 export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormProps) {
   const [photoPreview, setPhotoPreview] = useState<string>(employee?.photo || '');
+  const [loading, setLoading] = useState(false);
   
   const {
     register,
@@ -48,8 +49,11 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
     }
   }, [employee, setValue]);
 
-  const onSubmit = (data: Partial<Employee>) => {
+  const onSubmit = async (data: Partial<Employee>) => {
+    if (loading) return;
+
     try {
+      setLoading(true);
       const employeeData = {
         ...data,
         photo: photoPreview
@@ -57,7 +61,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
 
       if (employee) {
         // Atualizar colaborador existente
-        const updatedEmployee = localStorageService.updateEmployee(employee.id, employeeData);
+        const updatedEmployee = await firestoreService.updateEmployee(employee.id, employeeData);
         
         if (updatedEmployee) {
           console.log('Colaborador atualizado com sucesso');
@@ -67,7 +71,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
         }
       } else {
         // Criar novo colaborador
-        const newEmployee = localStorageService.saveEmployee(employeeData);
+        const newEmployee = await firestoreService.saveEmployee(employeeData);
         
         console.log('Novo colaborador criado com sucesso');
         onSave(newEmployee);
@@ -75,6 +79,8 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
     } catch (error) {
       console.error('Erro ao salvar colaborador:', error);
       alert('Erro ao salvar colaborador. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,6 +111,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
         <button
           onClick={onBack}
           className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+          disabled={loading}
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Voltar
@@ -146,10 +153,11 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   onChange={handlePhotoChange}
                   className="hidden"
                   id="photo-upload"
+                  disabled={loading}
                 />
                 <label
                   htmlFor="photo-upload"
-                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className={`cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <PhotoIcon className="w-4 h-4 mr-2" />
                   Escolher Foto
@@ -174,6 +182,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nome completo do colaborador"
+                  disabled={loading}
                 />
                 {errors.fullName && (
                   <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
@@ -193,6 +202,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="000.000.000-00"
+                  disabled={loading}
                 />
                 {errors.cpf && (
                   <p className="text-red-500 text-sm mt-1">{errors.cpf.message}</p>
@@ -208,6 +218,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: Secretária, Assistente Jurídico"
+                  disabled={loading}
                 />
                 {errors.position && (
                   <p className="text-red-500 text-sm mt-1">{errors.position.message}</p>
@@ -225,6 +236,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
+                  disabled={loading}
                 />
                 {errors.salary && (
                   <p className="text-red-500 text-sm mt-1">{errors.salary.message}</p>
@@ -240,6 +252,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   type="email"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="email@exemplo.com"
+                  disabled={loading}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
@@ -255,6 +268,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="(11) 99999-9999"
+                  disabled={loading}
                 />
               </div>
 
@@ -267,6 +281,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Endereço completo"
+                  disabled={loading}
                 />
               </div>
 
@@ -277,6 +292,7 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
                 <select
                   {...register('status')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
                 >
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
@@ -293,15 +309,17 @@ export default function EmployeeForm({ employee, onBack, onSave }: EmployeeFormP
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              disabled={loading}
             >
-              {employee ? 'Atualizar' : 'Salvar'} Colaborador
+              {loading ? 'Salvando...' : (employee ? 'Atualizar' : 'Salvar')} Colaborador
             </button>
           </div>
         </div>
