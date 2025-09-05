@@ -2,7 +2,9 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { yupResolver } from "@hookform/resolvers/yup"
 import * as yup from "yup"
+import { useSearchParams } from "react-router-dom"
 import { authService } from "../../services/authService"
+import { useInviteProcessor } from "../../hooks/useInviteProcessor"
 import type { User } from "../../types/auth"
 import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline"
 
@@ -22,9 +24,11 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
+  const [searchParams] = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState("")
+  const { processing: processingInvite, result: inviteResult } = useInviteProcessor()
 
   const {
     register,
@@ -42,7 +46,15 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
       const result = await authService.login(data.email, data.password)
 
       if (result.success && result.user) {
+        // Se há redirect para aceitar convite, aguardar processamento
+        if (searchParams.get('redirect') === 'accept-invite') {
+          // O hook useInviteProcessor cuidará do processamento
+          setTimeout(() => {
+            onSuccess(result.user!)
+          }, 1000)
+        } else {
         onSuccess(result.user)
+        }
       } else {
         setServerError(result.message)
       }
@@ -69,9 +81,38 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Entrar</h2>
-            <p className="text-gray-600 mt-2">Acesse sua conta no LegalX</p>
+            <p className="text-gray-600 mt-2">
+              {searchParams.get('redirect') === 'accept-invite' 
+                ? 'Faça login para aceitar o convite' 
+                : 'Acesse sua conta no LegalX'
+              }
+            </p>
           </div>
 
+          {/* Notificação de processamento de convite */}
+          {processingInvite && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <p className="text-blue-700 text-sm">Processando convite...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Resultado do processamento de convite */}
+          {inviteResult && (
+            <div className={`mb-4 p-3 border rounded-lg ${
+              inviteResult.success 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <p className={`text-sm ${
+                inviteResult.success ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {inviteResult.message}
+              </p>
+            </div>
+          )}
           {serverError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{serverError}</p>

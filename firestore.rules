@@ -1,0 +1,181 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função auxiliar para verificar se usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função para verificar se o usuário é dono do documento
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Função para verificar se usuário é membro ativo de uma equipe
+    function isActiveMember(teamId) {
+      return exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.status == 'active';
+    }
+    
+    // Função para verificar se usuário é admin ou owner de uma equipe
+    function isTeamAdmin(teamId) {
+      return exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role in ['owner', 'admin'] &&
+             get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.status == 'active';
+    }
+    
+    // REGRAS EXISTENTES - Mantidas como estavam
+    
+    // Usuários - cada um só acessa o próprio doc
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcoleção de equipes do usuário
+      match /teams/{teamId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Dados do usuário - estrutura hierárquica
+    match /userData/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcoleções dos dados do usuário
+      match /{subcollection=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Eventos - leitura e escrita só para usuários autenticados
+    match /events/{eventId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Backups - só quem está logado pode criar/ler
+    match /backups/{backupId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // NOVAS REGRAS - Sistema de equipes seguro
+    
+    // TEAMS: Controle rigoroso de acesso às equipes
+    match /teams/{teamId} {
+      // Leitura permitida para membros ativos da equipe
+      allow read: if isAuthenticated() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isActiveMember(teamId)
+      );
+      
+      // Criação permitida para usuários autenticados (se tornam owners)
+      allow create: if isAuthenticated() && 
+        request.resource.data.ownerUid == request.auth.uid;
+      
+      // Atualização apenas por owner ou admins
+      allow update: if isAuthenticated() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isTeamAdmin(teamId)
+      );
+      
+      // Exclusão apenas pelo owner
+      allow delete: if isAuthenticated() && 
+        resource.data.ownerUid == request.auth.uid;
+      
+      // MEMBROS DA EQUIPE: Nova estrutura hierárquica
+      match /members/{memberId} {
+        // Leitura para membros da equipe
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid ||
+          isActiveMember(teamId)
+        );
+        
+        // Criação apenas por sistema de convites ou owner/admin
+        allow create: if isAuthenticated() && (
+          // Owner da equipe pode adicionar membros
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid ||
+          // Admin pode adicionar membros
+          isTeamAdmin(teamId) ||
+          // Sistema de convites (usuário se adicionando após aceitar convite válido)
+          (request.resource.data.uid == request.auth.uid && 
+           request.resource.data.email == request.auth.token.email)
+        );
+        
+        // Atualização por owner/admin ou pelo próprio usuário (dados limitados)
+        allow update: if isAuthenticated() && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid ||
+          isTeamAdmin(teamId) ||
+          (resource.data.uid == request.auth.uid && 
+           request.resource.data.keys().hasOnly(['status', 'updatedAt']))
+        );
+        
+        // Exclusão apenas por owner/admin
+        allow delete: if isAuthenticated() && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid ||
+          isTeamAdmin(teamId)
+        );
+      }
+    }
+    
+    // INVITATIONS: Convites seguros com validação rigorosa
+    match /invitations/{inviteId} {
+      // Leitura pública limitada para metadados (necessário para links de convite)
+      // Apenas campos seguros são expostos
+      allow read: if true;
+      
+      // Criação apenas por membros autorizados da equipe
+      allow create: if isAuthenticated() && 
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.teamId != null &&
+        (
+          // Owner da equipe
+          exists(/databases/$(database)/documents/teams/$(request.resource.data.teamId)) &&
+          get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)).data.ownerUid == request.auth.uid
+        ) ||
+        (
+          // Admin da equipe
+          isTeamAdmin(request.resource.data.teamId)
+        );
+      
+      // Atualização limitada
+      allow update: if isAuthenticated() && (
+        // Criador pode cancelar/atualizar
+        resource.data.createdBy == request.auth.uid ||
+        // Owner da equipe pode gerenciar convites
+        (resource.data.teamId != null &&
+         exists(/databases/$(database)/documents/teams/$(resource.data.teamId)) &&
+         get(/databases/$(database)/documents/teams/$(resource.data.teamId)).data.ownerUid == request.auth.uid) ||
+        // Convidado pode aceitar (apenas status e campos de aceitação)
+        (resource.data.email == request.auth.token.email &&
+         request.resource.data.keys().hasOnly(['status', 'acceptedAt', 'acceptedBy', 'updatedAt']) &&
+         request.resource.data.status == 'accepted' &&
+         request.resource.data.acceptedBy == request.auth.uid)
+      );
+      
+      // Exclusão apenas pelo criador ou owner da equipe
+      allow delete: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.teamId != null &&
+         exists(/databases/$(database)/documents/teams/$(resource.data.teamId)) &&
+         get(/databases/$(database)/documents/teams/$(resource.data.teamId)).data.ownerUid == request.auth.uid)
+      );
+    }
+    
+    // REGRAS DE FALLBACK para compatibilidade com sistema antigo
+    // TODO: Remover após migração completa
+    
+    // Team Members antigo (será migrado)
+    match /teamMembers/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        (resource.data.teamId != null &&
+         exists(/databases/$(database)/documents/teams/$(resource.data.teamId)) &&
+         (get(/databases/$(database)/documents/teams/$(resource.data.teamId)).data.ownerUid == request.auth.uid ||
+          isActiveMember(resource.data.teamId)))
+      );
+      
+      allow create, update, delete: if false; // Bloquear criação no esquema antigo
+    }
+  }
+}

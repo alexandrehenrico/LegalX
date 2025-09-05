@@ -1,5 +1,7 @@
 import { useState } from "react"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import AuthWrapper from "./components/Auth/AuthWrapper"
+import InviteAcceptPage from "./components/Invites/InviteAcceptPage"
 import Header from "./components/Layout/Header"
 import Sidebar from "./components/Layout/Sidebar"
 import Dashboard from "./components/Dashboard/Dashboard"
@@ -16,12 +18,25 @@ import LawyerForm from "./components/Team/LawyerForm"
 import LawyerView from "./components/Team/LawyerView"
 import EmployeeForm from "./components/Team/EmployeeForm"
 import EmployeeView from "./components/Team/EmployeeView"
+import { useInviteProcessor } from "./hooks/useInviteProcessor"
 import type { Process, CalendarEvent } from "./types"
 import type { Lawyer, Employee } from "./types"
 import type { User } from "./types/auth"
 import { authService } from "./services/authService"
 
 function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/aceitar" element={<InviteAcceptPage />} />
+        <Route path="/*" element={<MainApp />} />
+      </Routes>
+    </Router>
+  )
+}
+
+function MainApp() {
+  const { result: inviteResult, clearResult } = useInviteProcessor()
   const [activeSection, setActiveSection] = useState("dashboard")
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -252,7 +267,32 @@ function App() {
   }
 
   const renderApp = (user: User) => (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 relative">
+      {/* Notificação de convite aceito */}
+      {inviteResult && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border ${
+          inviteResult.success 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <p className={`text-sm font-medium ${
+              inviteResult.success ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {inviteResult.message}
+            </p>
+            <button
+              onClick={clearResult}
+              className={`ml-4 text-sm ${
+                inviteResult.success ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'
+              }`}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
       <Header user={user} onLogout={handleLogout} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
